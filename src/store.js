@@ -174,6 +174,38 @@ export class TreeStore {
     return { id, trashed: path.basename(dest) };
   }
 
+  /**
+   * Move every tree file into another directory and return the moved ids.
+   * Used when the user changes their data folder and asks to take their trees
+   * along. Names that already exist at the destination get a numeric suffix so
+   * nothing is clobbered. Falls back to copy+delete across filesystems (e.g. an
+   * external drive), where a plain rename is not allowed.
+   */
+  async moveTo(destDir) {
+    const dest = path.resolve(destDir);
+    if (dest === this.dir) return [];
+    await fs.mkdir(dest, { recursive: true });
+    const moved = [];
+    for (const { id } of await this.list()) {
+      const from = this.pathFor(id);
+      let to = path.join(dest, id + '.json');
+      // eslint-disable-next-line no-await-in-loop
+      for (let n = 2; await this._exists(to); n++) to = path.join(dest, `${id}-${n}.json`);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await fs.rename(from, to);
+      } catch (err) {
+        if (err.code !== 'EXDEV') throw err;
+        // eslint-disable-next-line no-await-in-loop
+        await fs.copyFile(from, to);
+        // eslint-disable-next-line no-await-in-loop
+        await fs.unlink(from);
+      }
+      moved.push(id);
+    }
+    return moved;
+  }
+
   /** Seed the example tree on first run when the data directory has no trees. */
   async seedIfEmpty(seedFile, seedId = 'lusignan') {
     const existing = await this.list();

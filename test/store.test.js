@@ -120,6 +120,28 @@ test('delete — moves the tree to .trash (recoverable)', async () => {
   assert.ok(trash.some(f => f.startsWith('doomed-')), 'file moved to trash, not destroyed');
 });
 
+test('moveTo — relocates tree files, avoids clobbering, leaves source empty', async () => {
+  await store.write('a', { people: [{ id: 'p1', name: 'A' }] });
+  await store.write('b', { people: [{ id: 'p1', name: 'B' }] });
+
+  const destDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ft-move-'));
+  // a tree named "a" already exists at the destination → must not be overwritten
+  await new TreeStore(destDir).init();
+  await fs.writeFile(path.join(destDir, 'a.json'),
+    JSON.stringify({ people: [{ id: 'p1', name: 'pre-existing' }] }));
+
+  const moved = await store.moveTo(destDir);
+  assert.deepEqual(moved.sort(), ['a', 'b']);
+  assert.equal((await store.list()).length, 0, 'source folder is emptied');
+
+  const destFiles = (await fs.readdir(destDir)).filter(f => f.endsWith('.json')).sort();
+  assert.deepEqual(destFiles, ['a-2.json', 'a.json', 'b.json'], 'collision suffixed, originals kept');
+  const preserved = JSON.parse(await fs.readFile(path.join(destDir, 'a.json'), 'utf8'));
+  assert.equal(preserved.people[0].name, 'pre-existing');
+
+  await fs.rm(destDir, { recursive: true, force: true });
+});
+
 test('importTree — validates and stores', async () => {
   await assert.rejects(() => store.importTree('bad', { nope: 1 }), /valid tree/);
   const r = await store.importTree('Imported', { people: [{ id: 'p1', name: 'A' }] });

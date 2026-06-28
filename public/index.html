@@ -33,6 +33,13 @@
           <button id="tmNew"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg><span></span></button>
           <button id="tmImport"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 15v4H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4zM11 3v9.17l-2.59-2.58L7 11l5 5 5-5-1.41-1.41L13 12.17V3z"/></svg><span></span></button>
         </div>
+        <button class="tm-data" id="tmData">
+          <svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/></svg>
+          <span class="tm-data-text">
+            <span class="tm-data-label" id="tmDataLabel"></span>
+            <span class="tm-data-path" id="tmDataPath"></span>
+          </span>
+        </button>
       </div>
     </div>
     <span class="stats" id="stats"></span>
@@ -157,6 +164,22 @@
   <div class="actions">
     <button class="btn text" id="cdCancel" type="button"></button>
     <button class="btn danger" id="cdOk" type="button"></button>
+  </div>
+</dialog>
+
+<dialog id="dataDialog">
+  <h2 id="ddTitle"></h2>
+  <p class="dd-current"><span id="ddCurrentLabel"></span><code id="ddCurrent"></code></p>
+  <div class="field">
+    <label id="lbDdPath"></label>
+    <input id="ddPath" autocomplete="off" spellcheck="false" placeholder="~/Desktop/family-trees">
+    <div class="hint" id="ddHint"></div>
+  </div>
+  <label class="checkrow"><input type="checkbox" id="ddMove"> <span id="lbDdMove"></span></label>
+  <div class="dd-locked hidden" id="ddLocked"></div>
+  <div class="actions">
+    <button class="btn text" id="ddCancel" type="button"></button>
+    <button class="btn filled" id="ddSave" type="button"></button>
   </div>
 </dialog>
 

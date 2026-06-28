@@ -14,7 +14,9 @@
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { TreeStore } from './store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PUBLIC = path.resolve(__dirname, '..', 'public');
@@ -102,20 +104,45 @@ function statusForError(err) {
     case 'EBADID':
     case 'EBADTREE':
     case 'EBADNAME':
+    case 'EBADDIR':
     case 'EBADJSON': return 400;
+    case 'ELOCKED': return 409;
     case 'E2BIG': return 413;
     case 'ENOENT': return 404;
     default: return 500;
   }
 }
 
+/** Expand a leading ~ and resolve a user-typed folder path to an absolute one. */
+function resolveUserDir(input) {
+  let s = String(input ?? '').trim();
+  if (!s) throw Object.assign(new Error('A folder path is required.'), { code: 'EBADDIR' });
+  if (s.includes('\0')) throw Object.assign(new Error('Invalid folder path.'), { code: 'EBADDIR' });
+  if (s === '~' || s.startsWith('~/') || s.startsWith('~\\')) s = path.join(os.homedir(), s.slice(1));
+  return path.resolve(s);
+}
+
 /**
  * Create the HTTP server.
- * @param {{ store: import('./store.js').TreeStore, publicDir?: string }} opts
+ *
+ * `settings` makes the data folder changeable from the UI:
+ *   - defaultDir : the built-in default, shown as a hint
+ *   - locked     : true when --data / FAMAILE_TREE_DATA pinned it for this run
+ *   - persist    : async (dir) => void, remembers the choice across launches
+ *
+ * @param {{ store: import('./store.js').TreeStore, publicDir?: string,
+ *           settings?: { defaultDir?: string, locked?: boolean, persist?: (dir: string) => Promise<void> } }} opts
  * @returns {http.Server}
  */
-export function createServer({ store, publicDir = DEFAULT_PUBLIC }) {
+export function createServer({ store, publicDir = DEFAULT_PUBLIC, settings = {} }) {
   const PUBLIC = path.resolve(publicDir);
+  // The active store can be swapped at runtime, so handlers read it through `state`.
+  const state = {
+    store,
+    defaultDir: path.resolve(settings.defaultDir || store.dir),
+    locked: !!settings.locked,
+    persist: settings.persist || null
+  };
 
   return http.createServer(async (req, res) => {
     try {
@@ -136,7 +163,7 @@ export function createServer({ store, publicDir = DEFAULT_PUBLIC }) {
       const segments = url.pathname.split('/').filter(Boolean);
 
       if (segments[0] === 'api') {
-        return await handleApi(req, res, segments.slice(1), store);
+        return await handleApi(req, res, segments.slice(1), state);
       }
       return await handleStatic(req, res, url.pathname, PUBLIC);
     } catch (err) {
@@ -146,9 +173,12 @@ export function createServer({ store, publicDir = DEFAULT_PUBLIC }) {
 }
 
 /* ---------------- API ---------------- */
-async function handleApi(req, res, seg, store) {
-  // seg: ['trees'] | ['trees', id] | ['trees', id, 'duplicate']
+async function handleApi(req, res, seg, state) {
+  // seg: ['settings'] | ['trees'] | ['trees', id] | ['trees', id, 'duplicate']
+  if (seg[0] === 'settings' && seg.length === 1) return handleSettings(req, res, state);
   if (seg[0] !== 'trees') return sendJson(res, 404, { error: 'Unknown endpoint' });
+
+  const store = state.store;
 
   // /api/trees
   if (seg.length === 1) {
@@ -189,6 +219,41 @@ async function handleApi(req, res, seg, store) {
   }
 
   return sendJson(res, 404, { error: 'Unknown endpoint' });
+}
+
+/* ---------------- settings (data folder) ---------------- */
+const settingsView = state => ({
+  dataDir: state.store.dir,
+  defaultDir: state.defaultDir,
+  configurable: !state.locked && !!state.persist,
+  locked: state.locked
+});
+
+async function handleSettings(req, res, state) {
+  if (req.method === 'GET') return sendJson(res, 200, settingsView(state));
+  if (req.method !== 'PUT') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  if (state.locked || !state.persist) {
+    throw Object.assign(
+      new Error('The data folder is fixed for this session (set with --data or FAMAILE_TREE_DATA) and cannot be changed here.'),
+      { code: 'ELOCKED' });
+  }
+
+  const body = (await readJsonBody(req)) || {};
+  const target = resolveUserDir(body.dataDir);
+  if (target === state.store.dir) return sendJson(res, 200, { ...settingsView(state), moved: 0 });
+
+  let nextStore;
+  try {
+    nextStore = await new TreeStore(target).init();   // creates the folder if needed
+  } catch (err) {
+    throw Object.assign(new Error(`Could not use that folder: ${err.message}`), { code: 'EBADDIR' });
+  }
+
+  const moved = body.move ? await state.store.moveTo(target) : [];
+  state.store = nextStore;
+  await state.persist(target);
+  return sendJson(res, 200, { ...settingsView(state), moved: moved.length });
 }
 
 /* ---------------- static files ---------------- */

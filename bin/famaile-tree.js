@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createServer } from '../src/server.js';
 import { TreeStore } from '../src/store.js';
+import { readConfig, writeConfig, configPath } from '../src/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -21,8 +22,10 @@ const SEED_FILE = path.join(ROOT, 'examples', 'lusignan.json');
 
 const DEFAULTS = { port: 3456, host: '127.0.0.1', open: true };
 
+const DEFAULT_DATA_DIR = path.join(os.homedir(), '.famaile-tree', 'trees');
+
 function parseArgs(argv) {
-  const opts = { ...DEFAULTS, data: process.env.FAMAILE_TREE_DATA || null };
+  const opts = { ...DEFAULTS, data: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -67,14 +70,28 @@ Options:
   -v, --version      Show version
 
 Environment:
-  FAMAILE_TREE_DATA  Default data folder (overridden by --data)
+  FAMAILE_TREE_DATA  Data folder for this run (same effect as --data)
+
+The data folder can also be changed from inside the app (tree menu → "Data
+folder"); that choice is remembered in ${configPath()} and used on the next
+launch. A --data flag or FAMAILE_TREE_DATA pins the folder for one run and
+takes priority over the remembered choice.
 
 Your trees are stored as JSON files on your computer and never leave it.`;
 }
 
-function resolveDataDir(opts) {
-  if (opts.data) return path.resolve(opts.data);
-  return path.join(os.homedir(), '.famaile-tree', 'trees');
+/**
+ * Decide which folder to store trees in, in priority order:
+ *   1. --data / FAMAILE_TREE_DATA  → pins the folder for this run ("locked")
+ *   2. the remembered choice in config.json
+ *   3. the built-in default (~/.famaile-tree/trees)
+ */
+async function resolveDataDir(opts) {
+  const override = opts.data || process.env.FAMAILE_TREE_DATA;
+  if (override) return { dir: path.resolve(override), locked: true };
+  const cfg = await readConfig();
+  if (cfg.dataDir) return { dir: path.resolve(cfg.dataDir), locked: false };
+  return { dir: DEFAULT_DATA_DIR, locked: false };
 }
 
 /** Listen, retrying the next few ports if the chosen one is busy. */
@@ -113,11 +130,19 @@ async function main() {
   if (opts.help) { console.log(help()); return; }
   if (opts.version) { console.log(await version()); return; }
 
-  const dataDir = resolveDataDir(opts);
+  const { dir: dataDir, locked } = await resolveDataDir(opts);
   const store = await new TreeStore(dataDir).init();
   const seeded = await store.seedIfEmpty(SEED_FILE);
 
-  const server = createServer({ store, publicDir: PUBLIC_DIR });
+  const server = createServer({
+    store,
+    publicDir: PUBLIC_DIR,
+    settings: {
+      defaultDir: DEFAULT_DATA_DIR,
+      locked,
+      persist: dir => writeConfig({ dataDir: dir })
+    }
+  });
 
   let actualPort;
   try {
