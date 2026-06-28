@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Mobile-friendly touch & layout.** The canvas now supports two-finger
+  **pinch-to-zoom** (and two-finger pan) on phones and tablets, in addition to the
+  existing one-finger pan, so the tree is fully navigable by touch without reaching for
+  the on-screen zoom buttons. On narrow screens the header compacts (the segmented view
+  control moves to its own full-width row, secondary stats hide) and the person editor
+  panel expands to fill the screen instead of clipping off the right edge.
 - **First-run welcome popup.** A small, well-designed dialog on the first visit explains
   what Genograph is, its privacy model, and how to use it (click a person, add relatives,
   build your own trees). On the hosted browser build it also points to the purely local

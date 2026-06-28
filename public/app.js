@@ -395,26 +395,67 @@ function setupCanvas() {
   const cv = $('canvas');
   let panning = false, sx = 0, sy = 0, stx = 0, sty = 0, moved = false, pressCard = null;
   const onControl = e => e.target.closest('#focusChip, .zoomctrl, #fab, #emptyState');
+  // Active pointers, so we can support one-finger pan and two-finger pinch-zoom.
+  const pointers = new Map();
+  let pinchDist = 0, pinchCx = 0, pinchCy = 0;
+  const startPan = (x, y) => { panning = true; sx = x; sy = y; stx = view.tx; sty = view.ty; };
   cv.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (onControl(e)) { pressCard = null; return; }
-    panning = true; moved = false;
-    pressCard = e.target.closest('.card');
-    sx = e.clientX; sy = e.clientY; stx = view.tx; sty = view.ty;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     cv.setPointerCapture(e.pointerId);
-    cv.classList.add('panning');
+    if (pointers.size === 1) {
+      moved = false;
+      pressCard = e.target.closest('.card');
+      startPan(e.clientX, e.clientY);
+      cv.classList.add('panning');
+    } else if (pointers.size === 2) {
+      // Two fingers down: switch to pinch; cancel pan/tap selection.
+      panning = false; moved = true; pressCard = null;
+      const [a, b] = [...pointers.values()];
+      const rect = cv.getBoundingClientRect();
+      pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+      pinchCx = (a.x + b.x) / 2 - rect.left;
+      pinchCy = (a.y + b.y) / 2 - rect.top;
+    }
   });
   cv.addEventListener('pointermove', e => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const rect = cv.getBoundingClientRect();
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const cx = (a.x + b.x) / 2 - rect.left, cy = (a.y + b.y) / 2 - rect.top;
+      if (pinchDist > 0) {
+        // Pan by midpoint travel, then zoom about the midpoint.
+        view.tx += cx - pinchCx; view.ty += cy - pinchCy;
+        zoomAt(dist / pinchDist, cx, cy);
+      }
+      pinchDist = dist; pinchCx = cx; pinchCy = cy;
+      return;
+    }
     if (!panning) return;
     const dx = e.clientX - sx, dy = e.clientY - sy;
     if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
     view.tx = stx + dx; view.ty = sty + dy;
     applyView();
   });
-  cv.addEventListener('pointerup', () => {
-    panning = false;
-    cv.classList.remove('panning');
-  });
+  const endPointer = e => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchDist = 0;
+    if (pointers.size === 1) {
+      // Lifted to a single finger: resume panning from the one that remains.
+      const [p] = [...pointers.values()];
+      startPan(p.x, p.y);
+    } else if (pointers.size === 0) {
+      panning = false;
+      cv.classList.remove('panning');
+    }
+  };
+  cv.addEventListener('pointerup', endPointer);
+  cv.addEventListener('pointercancel', endPointer);
   cv.addEventListener('click', e => {
     if (onControl(e)) return;
     if (moved) { moved = false; return; }
