@@ -1,0 +1,46 @@
+{
+  "name": "famaile-tree",
+  "version": "1.0.0",
+  "description": "Offline, private family-tree browser & editor that runs in your browser. Your data never leaves your machine.",
+  "type": "module",
+  "bin": {
+    "famaile-tree": "bin/famaile-tree.js"
+  },
+  "scripts": {
+    "start": "node bin/famaile-tree.js --data ./trees",
+    "dev": "node bin/famaile-tree.js --data ./trees",
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "files": [
+    "bin",
+    "src",
+    "public",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "family-tree",
+    "genealogy",
+    "ancestry",
+    "pedigree",
+    "family-history",
+    "offline",
+    "local-first",
+    "privacy"
+  ],
+  "author": "Mete Morris <morrismete@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metemorris/famaile-tree.git"
+  },
+  "homepage": "https://github.com/metemorris/famaile-tree#readme",
+  "bugs": {
+    "url": "https://github.com/metemorris/famaile-tree/issues"
+  }
+}

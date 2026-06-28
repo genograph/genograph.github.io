@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+
+# Local dev tooling (machine-specific paths)
+.claude/
+
+# ─────────────────────────────────────────────────────────────────────────
+# Local family-tree data — NEVER commit. Your trees stay private, on your
+# machine only. The app creates and seeds this folder at runtime.
+# ─────────────────────────────────────────────────────────────────────────
+trees/

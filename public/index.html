@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Famaile Tree</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="appbar">
+  <div class="appbar-left">
+    <svg class="logo" viewBox="0 0 24 24" width="26" height="26" id="brand"><path fill="currentColor" d="M12 2a4 4 0 0 1 4 4c0 .73-.2 1.41-.54 2H17a4 4 0 0 1 4 4 4 4 0 0 1-4 4h-4v2.5a2.5 2.5 0 0 1 1.5 2.29V21h-5v-.21A2.5 2.5 0 0 1 11 18.5V16H7a4 4 0 0 1-4-4 4 4 0 0 1 4-4h1.54A3.98 3.98 0 0 1 8 6a4 4 0 0 1 4-4z"/></svg>
+    <div class="treewrap">
+      <button class="treebtn" id="treeBtn" aria-haspopup="true" aria-expanded="false">
+        <span id="treeBtnName">…</span>
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="treemenu hidden" id="treeMenu">
+        <div class="treemenu-head">
+          <span class="tm-label" id="tmLabel"></span>
+          <div class="treemenu-actions">
+            <button class="iconbtn sm" id="tmRename" title=""><svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg></button>
+            <button class="iconbtn sm" id="tmDuplicate" title=""><svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m0 16H8V7h11z"/></svg></button>
+            <button class="iconbtn sm" id="tmExport" title=""><svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M5 20h14v-2H5zM19 9h-4V3H9v6H5l7 7z"/></svg></button>
+            <button class="iconbtn sm danger" id="tmDelete" title=""><svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg></button>
+          </div>
+        </div>
+        <div class="treemenu-list" id="tmList"></div>
+        <div class="treemenu-foot">
+          <button id="tmNew"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg><span></span></button>
+          <button id="tmImport"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 15v4H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4zM11 3v9.17l-2.59-2.58L7 11l5 5 5-5-1.41-1.41L13 12.17V3z"/></svg><span></span></button>
+        </div>
+      </div>
+    </div>
+    <span class="stats" id="stats"></span>
+  </div>
+  <div class="seg" id="modeSeg">
+    <button data-mode="full" id="segFull"></button>
+    <button data-mode="close" id="segClose"></button>
+    <button data-mode="ancestors" id="segAnc"></button>
+  </div>
+  <div class="appbar-right">
+    <div class="search">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
+      <input id="searchInput" autocomplete="off">
+      <div id="searchResults" class="sug hidden"></div>
+    </div>
+    <button class="iconbtn" id="homeBtn" title="">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    </button>
+    <button class="iconbtn" id="themeBtn" title=""></button>
+    <button class="iconbtn langbtn" id="langBtn">EN</button>
+    <span class="savestatus" id="saveStatus"></span>
+  </div>
+</header>
+
+<main>
+  <div id="canvas">
+    <div id="world">
+      <svg id="lines"></svg>
+      <div id="cards"></div>
+    </div>
+    <div id="emptyState" class="hidden">
+      <svg viewBox="0 0 24 24" width="48" height="48"><path fill="currentColor" d="M12 2a4 4 0 0 1 4 4c0 .73-.2 1.41-.54 2H17a4 4 0 0 1 4 4 4 4 0 0 1-4 4h-4v2.5a2.5 2.5 0 0 1 1.5 2.29V21h-5v-.21A2.5 2.5 0 0 1 11 18.5V16H7a4 4 0 0 1-4-4 4 4 0 0 1 4-4h1.54A3.98 3.98 0 0 1 8 6a4 4 0 0 1 4-4z"/></svg>
+      <h2 id="emptyTitle"></h2>
+      <p id="emptyMsg"></p>
+      <button class="btn filled" id="emptyAction"></button>
+    </div>
+    <div id="focusChip" class="hidden">
+      <span id="focusChipName"></span>
+      <button id="focusClear" title="">✕</button>
+    </div>
+    <div class="zoomctrl">
+      <button id="zoomIn" title="+">＋</button>
+      <button id="zoomOut" title="−">－</button>
+      <button id="zoomFit"></button>
+    </div>
+    <button id="fab" title="">
+      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+    </button>
+  </div>
+  <aside id="panel" class="hidden"></aside>
+</main>
+
+<dialog id="addDialog">
+  <h2 id="adTitle"></h2>
+  <div class="ad-rel" id="adRel"></div>
+  <div class="field">
+    <label id="lbName"></label>
+    <div class="namewrap">
+      <input id="apName" autocomplete="off">
+      <div id="apSug" class="sug hidden"></div>
+    </div>
+    <div id="apChosen" class="chosen hidden"><span></span><button id="apClear" type="button">×</button></div>
+    <div class="hint" id="apHint"></div>
+  </div>
+  <div id="apDetails">
+    <div class="row2">
+      <div class="field"><label id="lbAlias"></label><input id="apAlias"></div>
+      <div class="field"><label id="lbMaiden"></label><input id="apMaiden"></div>
+    </div>
+    <div class="field" id="fSex">
+      <label id="lbSex"></label>
+      <div class="segmini">
+        <button type="button" data-sex="M" id="sexM"></button>
+        <button type="button" data-sex="F" id="sexF"></button>
+      </div>
+    </div>
+    <div class="field hidden" id="fOther"><label id="lbOther"></label><select id="apOther"></select></div>
+    <div class="row2">
+      <div class="field">
+        <label><span id="lbBd"></span><span class="unclbl"><input type="checkbox" id="apBdU"> <span class="unctxt"></span></span></label>
+        <input id="apBd" placeholder="YYYY.MM.DD">
+      </div>
+      <div class="field">
+        <label><span id="lbBp"></span><span class="unclbl"><input type="checkbox" id="apBpUnc"> <span class="unctxt"></span></span></label>
+        <input id="apBp">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label><span id="lbDd"></span><span class="unclbl"><input type="checkbox" id="apDdU"> <span class="unctxt"></span></span></label>
+        <input id="apDd" placeholder="YYYY.MM.DD">
+      </div>
+      <div class="field">
+        <label><span id="lbDp"></span><span class="unclbl"><input type="checkbox" id="apDpUnc"> <span class="unctxt"></span></span></label>
+        <input id="apDp">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label id="lbBc"></label><input id="apBc"></div>
+      <div class="field"><label id="lbDc"></label><input id="apDc"></div>
+    </div>
+    <label class="checkrow"><input type="checkbox" id="apDec"> <span id="lbDec"></span></label>
+    <div class="row2">
+      <div class="field"><label id="lbCause"></label><select id="apCause"></select></div>
+      <div class="field"><label id="lbCauseD"></label><input id="apCauseD"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label id="lbBur"></label><input id="apBur"></div>
+      <div class="field"><label id="lbOcc"></label><input id="apOcc"></div>
+    </div>
+    <div class="field"><label id="lbNotes"></label><textarea id="apNotes" rows="3"></textarea></div>
+  </div>
+  <div class="actions">
+    <button class="btn text" id="apCancel" type="button"></button>
+    <button class="btn filled" id="apOk" type="button"></button>
+  </div>
+</dialog>
+
+<dialog id="confirmDialog">
+  <h2 id="cdTitle"></h2>
+  <p id="cdMsg"></p>
+  <div class="actions">
+    <button class="btn text" id="cdCancel" type="button"></button>
+    <button class="btn danger" id="cdOk" type="button"></button>
+  </div>
+</dialog>
+
+<dialog id="promptDialog">
+  <h2 id="pdTitle"></h2>
+  <div class="field"><input id="pdInput" autocomplete="off"></div>
+  <div class="actions">
+    <button class="btn text" id="pdCancel" type="button"></button>
+    <button class="btn filled" id="pdOk" type="button"></button>
+  </div>
+</dialog>
+
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<div id="snackbar" class="hidden"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
