@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **First-run welcome popup.** A small, well-designed dialog on the first visit explains
+  what Genograph is, its privacy model, and how to use it (click a person, add relatives,
+  build your own trees). On the hosted browser build it also points to the purely local
+  `npx genograph` version with a copy-to-clipboard command; that tip is hidden in the
+  local app. A `?` help button in the header reopens it any time. Fully translated (EN/TR)
+  and theme-aware; shown once per browser (tracked in `localStorage`).
 - **Run it in your browser — no install.** A free, static build hosted on GitHub Pages
   (<https://genograph.github.io/>) with the same UI as the local app. Your
   data still stays on your machine: real `.json` files in a folder you pick via the File
