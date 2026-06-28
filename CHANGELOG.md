@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Custom data folder from the app.** The tree menu now surfaces where your trees
+  are saved and lets you change it — point the app at an existing folder of trees,
+  or move your current trees into a new one (e.g. your Desktop). The choice is
+  remembered across launches in `~/.famaile-tree/config.json`.
+- `GET`/`PUT /api/settings` endpoint backing the data-folder picker.
+- `FAMAILE_TREE_DATA` / `--data` now pin the folder for a single run and take
+  priority over the remembered choice (the in-app picker is disabled while pinned).
+
 ## [1.0.0] - 2026-06-28
 
 First public release.

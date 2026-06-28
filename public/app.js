@@ -55,7 +55,15 @@ const I18N = {
     importInvalid: 'Bu dosya geçerli bir ağaç değil ("people" listesi gerekli).', importFailed: 'İçe aktarma başarısız',
     loadError: 'Ağaç yüklenemedi',
     emptyNoPeopleTitle: 'Bu ağaç boş', emptyNoPeopleMsg: 'Oluşturmaya başlamak için ilk kişiyi ekleyin.', emptyNoPeopleAction: 'İlk kişiyi ekle',
-    emptyNoTreeTitle: 'Henüz ağaç yok', emptyNoTreeMsg: 'İlk aile ağacınızı oluşturun.', emptyNoTreeAction: 'Yeni ağaç'
+    emptyNoTreeTitle: 'Henüz ağaç yok', emptyNoTreeMsg: 'İlk aile ağacınızı oluşturun.', emptyNoTreeAction: 'Yeni ağaç',
+    // data folder
+    save: 'Kaydet', dataFolder: 'Veri klasörü', dataFolderTitle: 'Veri klasörü',
+    dataCurrentLabel: 'Ağaçlarınız şu anda burada saklanıyor:',
+    dataPathLabel: 'Ağaçları bunun yerine bu klasöre kaydet',
+    dataHint: 'Tam bir yol yazın (örn. ~/Desktop/aile-agaci). Klasör yoksa oluşturulur. Mevcut klasörü korumak için boş bırakın.',
+    dataMove: 'Mevcut ağaçlarımı yeni klasöre taşı',
+    dataLockedMsg: 'Klasör, bu oturum için --data bayrağı veya FAMAILE_TREE_DATA değişkeniyle sabitlendi, bu yüzden buradan değiştirilemez.',
+    dataChanged: 'Veri klasörü değiştirildi', dataMovedSnack: '{n} ağaç yeni klasöre taşındı'
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
@@ -99,7 +107,15 @@ const I18N = {
     importInvalid: 'That file is not a valid tree (it needs a "people" array).', importFailed: 'Import failed',
     loadError: 'Could not load tree',
     emptyNoPeopleTitle: 'This tree is empty', emptyNoPeopleMsg: 'Add the first person to start building it.', emptyNoPeopleAction: 'Add the first person',
-    emptyNoTreeTitle: 'No trees yet', emptyNoTreeMsg: 'Create your first family tree.', emptyNoTreeAction: 'New tree'
+    emptyNoTreeTitle: 'No trees yet', emptyNoTreeMsg: 'Create your first family tree.', emptyNoTreeAction: 'New tree',
+    // data folder
+    save: 'Save', dataFolder: 'Data folder', dataFolderTitle: 'Data folder',
+    dataCurrentLabel: 'Your trees are currently saved in:',
+    dataPathLabel: 'Save trees in this folder instead',
+    dataHint: 'Type a full path (e.g. ~/Desktop/family-trees). The folder is created if it doesn’t exist. Leave blank to keep the current one.',
+    dataMove: 'Move my current trees into the new folder',
+    dataLockedMsg: 'The folder is fixed for this session by a --data flag or the FAMAILE_TREE_DATA variable, so it can’t be changed here.',
+    dataChanged: 'Data folder changed', dataMovedSnack: 'Moved {n} tree(s) to the new folder'
   }
 };
 let lang = localStorage.getItem('ft_lang') || 'en';
@@ -122,6 +138,7 @@ const t = (k, vars) => {
 const $ = id => document.getElementById(id);
 let model = null;            // { raw, people:[], byId:Map }
 let trees = [];             // [{ id, name, people, updated_at }]
+let settings = null;        // { dataDir, defaultDir, configurable, locked }
 let currentTreeId = null;
 let focusId = null;
 let rootId = null;
@@ -161,6 +178,10 @@ async function api(path, opts) {
 async function refreshTrees() {
   const out = await api('trees');
   trees = (out && out.trees) || [];
+}
+
+async function refreshSettings() {
+  try { settings = await api('settings'); } catch { settings = null; }
 }
 
 function currentTreeName() {
@@ -931,6 +952,72 @@ function setupTreeLibrary() {
   document.addEventListener('click', e => { if (!e.target.closest('.treewrap')) closeTreeMenu(); });
 }
 
+/* ---------------- data folder ---------------- */
+function updateDataRow() {
+  const dir = settings && settings.dataDir;
+  $('tmDataPath').textContent = dir || '—';
+  $('tmData').title = dir || '';
+}
+function dataLocked() {
+  return !settings || settings.locked || !settings.configurable;
+}
+function openDataDialog() {
+  closeTreeMenu();
+  const dlg = $('dataDialog');
+  const locked = dataLocked();
+  $('ddTitle').textContent = t('dataFolderTitle');
+  $('ddCurrentLabel').textContent = t('dataCurrentLabel');
+  $('ddCurrent').textContent = (settings && settings.dataDir) || '';
+  $('lbDdPath').textContent = t('dataPathLabel');
+  $('ddHint').textContent = t('dataHint');
+  $('lbDdMove').textContent = t('dataMove');
+  $('ddCancel').textContent = t('cancel');
+  $('ddSave').textContent = t('save');
+  $('ddPath').value = '';
+  $('ddMove').checked = false;
+  $('ddLocked').textContent = t('dataLockedMsg');
+  $('ddLocked').classList.toggle('hidden', !locked);
+  for (const id of ['ddPath', 'ddMove', 'ddSave']) $(id).disabled = locked;
+  dlg.showModal();
+  if (!locked) $('ddPath').focus();
+}
+async function saveDataFolder() {
+  if (dataLocked()) return;
+  const dataDir = $('ddPath').value.trim();
+  if (!dataDir) { $('dataDialog').close(); return; }
+  const move = $('ddMove').checked;
+  if (dirty) await saveNow();   // don't lose unsaved edits before relocating
+  try {
+    settings = await api('settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataDir, move })
+    });
+    $('dataDialog').close();
+    updateDataRow();
+    // the active folder changed — reload the library from the new location
+    await refreshTrees();
+    let id = currentTreeId;
+    if (!trees.find(td => td.id === id)) id = trees[0] && trees[0].id;
+    if (id) await openTree(id);
+    else {
+      model = null; currentTreeId = null; rootId = null; focusId = null; selectedId = null;
+      localStorage.removeItem('ft_tree');
+      updateTreeButton(); renderTree(); renderPanel();
+    }
+    snack(settings.moved ? t('dataMovedSnack', { n: settings.moved }) : t('dataChanged'));
+  } catch (e) {
+    snack(e.message);
+  }
+}
+function setupDataDialog() {
+  $('tmData').onclick = openDataDialog;
+  $('ddCancel').onclick = () => $('dataDialog').close();
+  $('ddSave').onclick = saveDataFolder;
+  $('ddPath').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); saveDataFolder(); }
+  });
+}
+
 /* ---------------- search ---------------- */
 function setupSearch() {
   const inp = $('searchInput'), box = $('searchResults');
@@ -985,6 +1072,8 @@ function applyLabels() {
   $('tmDuplicate').title = t('duplicateTree');
   $('tmExport').title = t('exportTree');
   $('tmDelete').title = t('deleteTreeBtn');
+  $('tmDataLabel').textContent = t('dataFolder');
+  updateDataRow();
   updateTreeButton();
   document.querySelectorAll('#modeSeg button').forEach(b =>
     b.classList.toggle('active', b.dataset.mode === mode));
@@ -1027,8 +1116,10 @@ function setupAppbar() {
   setupAppbar();
   setupAddDialog();
   setupTreeLibrary();
+  setupDataDialog();
   try {
     await refreshTrees();
+    await refreshSettings();
   } catch (e) {
     document.body.innerHTML = '<p style="padding:40px;font-size:16px">Could not reach the local server: ' + esc(e.message) + '</p>';
     return;

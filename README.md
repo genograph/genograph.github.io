@@ -71,6 +71,10 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
 - **Your trees** — use the tree menu in the header to **create**, **open**,
   **rename**, **duplicate**, **delete**, **import** (a `.json` file) or **export**
   the current tree.
+- **Data folder** — the bottom of the tree menu shows where your trees are saved
+  and lets you change it (for example to your Desktop or a synced folder). You can
+  either point the app at an existing folder of trees or tick *Move my current
+  trees* to take them with you. Your choice is remembered the next time you launch.
 - **Click** a person to open the side panel and edit name, sex, birth/death/burial,
   occupation, and notes.
 - **Double-click** a person to re-root ("focus") the tree on them.
@@ -96,6 +100,22 @@ famaile-tree [options]
 ```
 
 You can also set the data folder with the `FAMAILE_TREE_DATA` environment variable.
+
+### Where your trees are saved
+
+By default trees live in `~/.famaile-tree/trees`. There are three ways to change
+that, in order of priority:
+
+1. **`--data <dir>` or `FAMAILE_TREE_DATA`** — pins the folder for that run only.
+2. **In the app** — the tree menu has a **Data folder** row showing the current
+   path with an option to switch to any folder (e.g. `~/Desktop/family-trees`).
+   The folder is created if it doesn't exist, and you can move your existing trees
+   into it. This choice is remembered in `~/.famaile-tree/config.json` and used on
+   the next launch.
+3. **The default** — `~/.famaile-tree/trees` when nothing above is set.
+
+A `--data` flag or `FAMAILE_TREE_DATA` always wins over the remembered choice and,
+while active, the in-app picker is disabled so the session stays where you pointed it.
 
 ## Your data & privacy
 
