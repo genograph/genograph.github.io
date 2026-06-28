@@ -1,8 +1,9 @@
 'use strict';
 /* ============================================================
  * Famaile Tree — browser UI (ES module)
- * Talks to the local server's /api/trees endpoints; all data logic lives in
- * ./lib/model.js and the layout in ./lib/layout.js.
+ * Persists through a pluggable store chosen at startup by ./lib/storage.js
+ * (local server, a real folder via File System Access, or IndexedDB). All data
+ * logic lives in ./lib/model.js and the layout in ./lib/layout.js.
  * ============================================================ */
 
 import {
@@ -10,6 +11,7 @@ import {
   birthSortIds, siblingIds, norm, searchText, yearOf, CAUSES, DATE_RE
 } from './lib/model.js';
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
+import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 
 /* ---------------- i18n ---------------- */
 const I18N = {
@@ -63,7 +65,12 @@ const I18N = {
     dataHint: 'Tam bir yol yazın (örn. ~/Desktop/aile-agaci). Klasör yoksa oluşturulur. Mevcut klasörü korumak için boş bırakın.',
     dataMove: 'Mevcut ağaçlarımı yeni klasöre taşı',
     dataLockedMsg: 'Klasör, bu oturum için --data bayrağı veya FAMAILE_TREE_DATA değişkeniyle sabitlendi, bu yüzden buradan değiştirilemez.',
-    dataChanged: 'Veri klasörü değiştirildi', dataMovedSnack: '{n} ağaç yeni klasöre taşındı'
+    dataChanged: 'Veri klasörü değiştirildi', dataMovedSnack: '{n} ağaç yeni klasöre taşındı',
+    // browser storage (static / no server)
+    storageLabel: 'Depolama', folderLabel: 'Klasör',
+    storedInBrowser: 'Bu tarayıcıda saklanıyor — yedeklemek için dışa aktarın',
+    openFolderBtn: 'Klasör aç', changeFolderBtn: 'Klasörü değiştir',
+    folderConnected: 'Klasöre kaydediliyor: {n}', folderError: 'Klasör açılamadı'
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
@@ -115,7 +122,12 @@ const I18N = {
     dataHint: 'Type a full path (e.g. ~/Desktop/family-trees). The folder is created if it doesn’t exist. Leave blank to keep the current one.',
     dataMove: 'Move my current trees into the new folder',
     dataLockedMsg: 'The folder is fixed for this session by a --data flag or the FAMAILE_TREE_DATA variable, so it can’t be changed here.',
-    dataChanged: 'Data folder changed', dataMovedSnack: 'Moved {n} tree(s) to the new folder'
+    dataChanged: 'Data folder changed', dataMovedSnack: 'Moved {n} tree(s) to the new folder',
+    // browser storage (static / no server)
+    storageLabel: 'Storage', folderLabel: 'Folder',
+    storedInBrowser: 'Stored in this browser — export to back up',
+    openFolderBtn: 'Open a folder', changeFolderBtn: 'Change folder',
+    folderConnected: 'Saving to folder: {n}', folderError: 'Could not open that folder'
   }
 };
 let lang = localStorage.getItem('ft_lang') || 'en';
@@ -138,7 +150,10 @@ const t = (k, vars) => {
 const $ = id => document.getElementById(id);
 let model = null;            // { raw, people:[], byId:Map }
 let trees = [];             // [{ id, name, people, updated_at }]
-let settings = null;        // { dataDir, defaultDir, configurable, locked }
+let settings = null;        // server mode only: { dataDir, defaultDir, configurable, locked }
+let store = null;           // active storage backend (server | fs | idb)
+let storeMode = 'server';   // 'server' | 'fs' | 'idb'
+let savedHandle = null;     // a remembered folder handle awaiting reconnect (browser mode)
 let currentTreeId = null;
 let focusId = null;
 let rootId = null;
@@ -166,22 +181,14 @@ function snack(msg) {
   clearTimeout(sb._t); sb._t = setTimeout(() => sb.classList.add('hidden'), 2600);
 }
 
-/* ---------------- server API ---------------- */
-async function api(path, opts) {
-  const res = await fetch('/api/' + path, opts);
-  let body = null;
-  try { body = await res.json(); } catch { /* empty body */ }
-  if (!res.ok) throw new Error((body && body.error) || ('HTTP ' + res.status));
-  return body;
-}
-
+/* ---------------- storage ---------------- */
 async function refreshTrees() {
-  const out = await api('trees');
-  trees = (out && out.trees) || [];
+  trees = await store.list();
 }
 
 async function refreshSettings() {
-  try { settings = await api('settings'); } catch { settings = null; }
+  try { settings = store.getSettings ? await store.getSettings() : null; }
+  catch { settings = null; }
 }
 
 function currentTreeName() {
@@ -191,7 +198,7 @@ function currentTreeName() {
 }
 
 async function openTree(id) {
-  const raw = await api('trees/' + encodeURIComponent(id));
+  const raw = await store.read(id);
   model = buildModel(raw);
   rootId = rootIdOf(model);
   focusId = rootId;
@@ -223,13 +230,7 @@ async function saveNow() {
   if (!model || !currentTreeId) return;
   setStatus('dirty', t('saving'));
   try {
-    const res = await fetch('/api/trees/' + encodeURIComponent(currentTreeId), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serialize(model))
-    });
-    const out = await res.json();
-    if (!out.ok) throw new Error(out.error || 'save failed');
+    await store.write(currentTreeId, serialize(model));
     dirty = false;
     const now = new Date();
     setStatus('saved', '✓ ' + t('saved') + ' ' + now.toTimeString().slice(0, 5));
@@ -859,9 +860,7 @@ async function newTree() {
   const name = await askPrompt(t('newTreeTitle'), '', t('add'));
   if (!name) return;
   try {
-    const out = await api('trees', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
-    });
+    const out = await store.create(name);
     await refreshTrees();
     await openTree(out.id);
     snack(t('treeCreated', { n: out.name }));
@@ -873,10 +872,8 @@ async function renameCurrent() {
   const name = await askPrompt(t('renameTreeTitle'), currentTreeName(), t('add'));
   if (!name) return;
   try {
-    await api('trees/' + encodeURIComponent(currentTreeId), {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
-    });
-    if (model) { model.raw.summary = model.raw.summary || {}; model.raw.summary.name = name; }
+    const out = await store.rename(currentTreeId, name);
+    if (model) { model.raw.summary = model.raw.summary || {}; model.raw.summary.name = out.name; }
     await refreshTrees();
     updateTreeButton();
     snack(t('treeRenamed'));
@@ -887,7 +884,7 @@ async function duplicateCurrent() {
   if (!currentTreeId) return;
   if (dirty) await saveNow();
   try {
-    const out = await api('trees/' + encodeURIComponent(currentTreeId) + '/duplicate', { method: 'POST' });
+    const out = await store.duplicate(currentTreeId);
     await refreshTrees();
     await openTree(out.id);
     snack(t('treeCreated', { n: out.name }));
@@ -901,17 +898,19 @@ async function deleteCurrent() {
   if (!ok) return;
   try {
     const deletedId = currentTreeId;
-    await api('trees/' + encodeURIComponent(deletedId), { method: 'DELETE' });
+    await store.delete(deletedId);
     await refreshTrees();
     snack(t('treeDeleted', { n: nm }));
     const next = trees.find(td => td.id !== deletedId) || trees[0];
     if (next) await openTree(next.id);
-    else {
-      model = null; currentTreeId = null; rootId = null; focusId = null; selectedId = null;
-      localStorage.removeItem('ft_tree');
-      updateTreeButton(); renderTree(); renderPanel();
-    }
+    else resetToEmpty();
   } catch (e) { snack(e.message); }
+}
+/** Clear the workspace when no tree is open (after deleting the last one, or an empty store). */
+function resetToEmpty() {
+  model = null; currentTreeId = null; rootId = null; focusId = null; selectedId = null;
+  localStorage.removeItem('ft_tree');
+  updateTreeButton(); renderTree(); renderPanel();
 }
 function exportCurrent() {
   closeTreeMenu();
@@ -930,9 +929,7 @@ async function importTreeFile(file) {
     const data = JSON.parse(await file.text());
     if (!isValidTree(data)) { snack(t('importInvalid')); return; }
     const name = (data.summary && data.summary.name) || file.name.replace(/\.json$/i, '');
-    const out = await api('trees', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, data })
-    });
+    const out = await store.importTree(name, data);
     await refreshTrees();
     await openTree(out.id);
     snack(t('treeImported', { n: out.name }));
@@ -988,10 +985,7 @@ async function saveDataFolder() {
   const move = $('ddMove').checked;
   if (dirty) await saveNow();   // don't lose unsaved edits before relocating
   try {
-    settings = await api('settings', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dataDir, move })
-    });
+    settings = await store.putSettings({ dataDir, move });
     $('dataDialog').close();
     updateDataRow();
     // the active folder changed — reload the library from the new location
@@ -999,11 +993,7 @@ async function saveDataFolder() {
     let id = currentTreeId;
     if (!trees.find(td => td.id === id)) id = trees[0] && trees[0].id;
     if (id) await openTree(id);
-    else {
-      model = null; currentTreeId = null; rootId = null; focusId = null; selectedId = null;
-      localStorage.removeItem('ft_tree');
-      updateTreeButton(); renderTree(); renderPanel();
-    }
+    else resetToEmpty();
     snack(settings.moved ? t('dataMovedSnack', { n: settings.moved }) : t('dataChanged'));
   } catch (e) {
     snack(e.message);
@@ -1016,6 +1006,54 @@ function setupDataDialog() {
   $('ddPath').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); saveDataFolder(); }
   });
+}
+
+/* ---------------- browser storage row (static / no server) ----------------
+ * In server mode the Node "Data folder" row is shown. In browser mode we hide
+ * it and show where data lives instead: a real folder (File System Access) or
+ * "this browser" (IndexedDB), with an "Open a folder" affordance on browsers
+ * that support it. */
+function updateStoreRow() {
+  const dataRow = $('tmData'), storeRow = $('tmStore');
+  if (!dataRow || !storeRow) return;
+  if (storeMode === 'server') {
+    dataRow.classList.remove('hidden');
+    storeRow.classList.add('hidden');
+    updateDataRow();
+    return;
+  }
+  dataRow.classList.add('hidden');
+  storeRow.classList.remove('hidden');
+  const folderBtn = $('tmFolderBtn');
+  folderBtn.classList.toggle('hidden', !(supportsFolders() || storeMode === 'fs'));
+  if (storeMode === 'fs') {
+    $('tmStoreLabel').textContent = t('folderLabel');
+    $('tmStorePath').textContent = (store && store.folderName) || '';
+    $('tmFolderLabel').textContent = t('changeFolderBtn');
+  } else {
+    $('tmStoreLabel').textContent = t('storageLabel');
+    $('tmStorePath').textContent = t('storedInBrowser');
+    $('tmFolderLabel').textContent = t('openFolderBtn');
+  }
+}
+async function pickFolder() {
+  closeTreeMenu();
+  try {
+    if (dirty) await saveNow();   // flush edits into the current store before switching
+    const res = await openFolder(savedHandle);
+    if (!res) return;             // user cancelled the picker
+    store = res.store; storeMode = res.mode; savedHandle = null;
+    await refreshTrees();
+    updateStoreRow();
+    // open the remembered tree if the folder has it, else the first one, else empty
+    const prev = localStorage.getItem('ft_tree');
+    const id = (trees.find(td => td.id === prev) && prev) || (trees[0] && trees[0].id);
+    if (id) await openTree(id); else resetToEmpty();
+    snack(t('folderConnected', { n: store.folderName || '' }));
+  } catch (e) { snack(t('folderError') + ': ' + e.message); }
+}
+function setupStoreRow() {
+  $('tmFolderBtn').onclick = pickFolder;
 }
 
 /* ---------------- search ---------------- */
@@ -1073,7 +1111,7 @@ function applyLabels() {
   $('tmExport').title = t('exportTree');
   $('tmDelete').title = t('deleteTreeBtn');
   $('tmDataLabel').textContent = t('dataFolder');
-  updateDataRow();
+  updateStoreRow();
   updateTreeButton();
   document.querySelectorAll('#modeSeg button').forEach(b =>
     b.classList.toggle('active', b.dataset.mode === mode));
@@ -1117,11 +1155,14 @@ function setupAppbar() {
   setupAddDialog();
   setupTreeLibrary();
   setupDataDialog();
+  setupStoreRow();
   try {
+    const picked = await pickStore();
+    store = picked.store; storeMode = picked.mode; savedHandle = picked.savedHandle;
     await refreshTrees();
-    await refreshSettings();
+    if (storeMode === 'server') await refreshSettings();
   } catch (e) {
-    document.body.innerHTML = '<p style="padding:40px;font-size:16px">Could not reach the local server: ' + esc(e.message) + '</p>';
+    document.body.innerHTML = '<p style="padding:40px;font-size:16px">Could not load your trees: ' + esc(e.message) + '</p>';
     return;
   }
   let id = localStorage.getItem('ft_tree');
