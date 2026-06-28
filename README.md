@@ -9,9 +9,7 @@ places, relationships and interview notes. No account, no cloud, no tracking.
 > person, ask questions, type what you learn, and everything saves automatically
 > to a plain JSON file on your computer.
 
-<!-- Tip: drop a screenshot at docs/screenshot.png and uncomment the line below.
-<p align="center"><img src="docs/screenshot.png" alt="Famaile Tree screenshot" width="900"></p>
--->
+<p align="center"><img src="docs/screenshot.png" alt="Famaile Tree showing the House of Lusignan example tree" width="900"></p>
 
 
 ---
