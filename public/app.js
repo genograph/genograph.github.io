@@ -70,7 +70,24 @@ const I18N = {
     storageLabel: 'Depolama', folderLabel: 'Klasör',
     storedInBrowser: 'Bu tarayıcıda saklanıyor — yedeklemek için dışa aktarın',
     openFolderBtn: 'Klasör aç', changeFolderBtn: 'Klasörü değiştir',
-    folderConnected: 'Klasöre kaydediliyor: {n}', folderError: 'Klasör açılamadı'
+    folderConnected: 'Klasöre kaydediliyor: {n}', folderError: 'Klasör açılamadı',
+    // welcome / onboarding
+    welcomeHelp: 'Genograph hakkında & yardım',
+    welcomeTitle: 'Genograph’a hoş geldiniz',
+    welcomeIntro: 'Gizliliğe önem veren bir aile ağacı aracı. Kişileri, tarihleri, yerleri, ilişkileri ve görüşme notlarını kaydedin. Hesap yok, bulut yok, takip yok — verileriniz cihazınızdan ayrılmaz.',
+    welcomeExploring: 'Şu anda hemen deneyebilmeniz için bir örnek ağaç görüyorsunuz (Kudüs Kralı Guy de Lusignan’ın yakın akrabaları).',
+    welcomeUse1Title: 'Bir kişiye tıklayın',
+    welcomeUse1: '— ad, cinsiyet, tarihler, yerler ve notları düzenlemek için yan paneli açar.',
+    welcomeUse2Title: 'Akraba ekleyin',
+    welcomeUse2: '— paneldeki + düğmelerini (baba, anne, eş, çocuk, kardeş) ya da tuvaldeki + düğmesini kullanın.',
+    welcomeUse3Title: 'Kendi ağaçlarınızı oluşturun',
+    welcomeUse3: '— sol üstteki ağaç menüsünden ağaç oluşturun, yeniden adlandırın, içe/dışa aktarın.',
+    welcomeTips: 'İpuçları: kaydırmak için sürükleyin · yakınlaştırmak için tekerleği kullanın · bir kişiye odaklanmak için çift tıklayın · sağ üstten arayın.',
+    welcomePrivacy: 'Verileriniz bu cihazda kalır ve istediğiniz zaman tamamen size ait düz JSON olarak dışa aktarılabilir.',
+    welcomeLocalTitle: 'Gerçek dosyalar ve otomatik yedekler mi istiyorsunuz?',
+    welcomeLocal: 'Ücretsiz yerel sürümü çalıştırın: ağaçlarınızı doğrudan bilgisayarınızdaki .json dosyalarına yazar ve otomatik yedek tutar. Tamamen çevrimdışı çalışır.',
+    welcomeCopy: 'Kopyala', welcomeCopied: 'Kopyalandı ✓',
+    welcomeStart: 'Keşfetmeye başla'
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
@@ -127,7 +144,24 @@ const I18N = {
     storageLabel: 'Storage', folderLabel: 'Folder',
     storedInBrowser: 'Stored in this browser — export to back up',
     openFolderBtn: 'Open a folder', changeFolderBtn: 'Change folder',
-    folderConnected: 'Saving to folder: {n}', folderError: 'Could not open that folder'
+    folderConnected: 'Saving to folder: {n}', folderError: 'Could not open that folder',
+    // welcome / onboarding
+    welcomeHelp: 'About Genograph & help',
+    welcomeTitle: 'Welcome to Genograph',
+    welcomeIntro: 'A private family-tree builder. Record people, dates, places, relationships and interview notes. No account, no cloud, no tracking — your data never leaves your device.',
+    welcomeExploring: 'You’re looking at an example tree (the close relatives of Guy de Lusignan, 12th-century King of Jerusalem) so you can try things right away.',
+    welcomeUse1Title: 'Click a person',
+    welcomeUse1: '— opens the side panel to edit their name, sex, dates, places and notes.',
+    welcomeUse2Title: 'Add relatives',
+    welcomeUse2: '— use the + buttons in the panel (father, mother, spouse, child, sibling) or the + button on the canvas.',
+    welcomeUse3Title: 'Build your own trees',
+    welcomeUse3: '— the tree menu (top-left) lets you create, rename, import and export your own family trees.',
+    welcomeTips: 'Tips: drag to pan · scroll to zoom · double-click a person to focus the tree on them · search top-right.',
+    welcomePrivacy: 'Your data stays on this device and can be exported any time as plain JSON that you fully own.',
+    welcomeLocalTitle: 'Want real files & automatic backups?',
+    welcomeLocal: 'Run the free local version: it reads and writes your trees as .json files directly on your computer and keeps automatic backups. Works completely offline.',
+    welcomeCopy: 'Copy', welcomeCopied: 'Copied ✓',
+    welcomeStart: 'Start exploring'
   }
 };
 let lang = localStorage.getItem('ft_lang') || 'en';
@@ -135,6 +169,12 @@ let theme = localStorage.getItem('ft_theme') ||
   (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 const MOON_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>';
 const SUN_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0-5 2 3h-4l2-3zm0 20-2-3h4l-2 3zM2 12l3-2v4l-3-2zm20 0-3 2v-4l3 2zM4.9 4.9 8.4 6 6 8.4 4.9 4.9zm14.2 14.2L15.6 18l2.4-2.4 1.1 3.5zM4.9 19.1 6 15.6 8.4 18l-3.5 1.1zM19.1 4.9 18 8.4 15.6 6l3.5-1.1z"/></svg>';
+// welcome-dialog icons
+const BRAND_SVG = '<svg viewBox="0 0 24 24" width="30" height="30"><path fill="currentColor" d="M12 2a4 4 0 0 1 4 4c0 .73-.2 1.41-.54 2H17a4 4 0 0 1 4 4 4 4 0 0 1-4 4h-4v2.5a2.5 2.5 0 0 1 1.5 2.29V21h-5v-.21A2.5 2.5 0 0 1 11 18.5V16H7a4 4 0 0 1-4-4 4 4 0 0 1 4-4h1.54A3.98 3.98 0 0 1 8 6a4 4 0 0 1 4-4z"/></svg>';
+const W_EDIT_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg>';
+const W_ADD_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>';
+const W_TREE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/></svg>';
+const W_SHIELD_SVG = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9z"/></svg>';
 function applyTheme() {
   document.documentElement.dataset.theme = theme;
   const btn = $('themeBtn');
@@ -821,6 +861,77 @@ function askConfirm(title, msg, okLabel) {
   });
 }
 
+/* ---------------- welcome / onboarding ---------------- */
+const WELCOME_KEY = 'ft_welcomed';
+const LOCAL_CMD = 'npx genograph';
+
+function welcomeHTML() {
+  // The "run it purely locally" tip only makes sense in the hosted browser build;
+  // in the local Node app (server mode) the user is already running it locally.
+  const localBlock = storeMode === 'server' ? '' : `
+    <div class="welcome-local">
+      <h3>${esc(t('welcomeLocalTitle'))}</h3>
+      <p>${esc(t('welcomeLocal'))}</p>
+      <div class="welcome-cmd">
+        <code>${esc(LOCAL_CMD)}</code>
+        <button type="button" class="welcome-copy" id="welcomeCopy">${esc(t('welcomeCopy'))}</button>
+      </div>
+    </div>`;
+  const step = (ico, title, body) =>
+    `<li class="welcome-step"><span class="ico">${ico}</span>` +
+    `<span class="txt"><b>${esc(title)}</b> <span>${esc(body)}</span></span></li>`;
+  return `
+    <div class="welcome-hero">
+      <div class="welcome-logo">${BRAND_SVG}</div>
+      <h2>${esc(t('welcomeTitle'))}</h2>
+      <p class="welcome-intro">${esc(t('welcomeIntro'))}</p>
+    </div>
+    <div class="welcome-exploring">${esc(t('welcomeExploring'))}</div>
+    <ul class="welcome-steps">
+      ${step(W_EDIT_SVG, t('welcomeUse1Title'), t('welcomeUse1'))}
+      ${step(W_ADD_SVG, t('welcomeUse2Title'), t('welcomeUse2'))}
+      ${step(W_TREE_SVG, t('welcomeUse3Title'), t('welcomeUse3'))}
+    </ul>
+    <p class="welcome-tips">${esc(t('welcomeTips'))}</p>
+    <div class="welcome-note">${W_SHIELD_SVG}<span>${esc(t('welcomePrivacy'))}</span></div>
+    ${localBlock}
+    <div class="welcome-actions">
+      <button class="btn filled" id="welcomeOk" type="button">${esc(t('welcomeStart'))}</button>
+    </div>`;
+}
+
+function openWelcome() {
+  const dlg = $('welcomeDialog');
+  $('welcomeBody').innerHTML = welcomeHTML();
+  $('welcomeClose').title = t('closePanel');
+  $('welcomeOk').onclick = () => dlg.close();
+  const copy = $('welcomeCopy');
+  if (copy) copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(LOCAL_CMD);
+      copy.textContent = t('welcomeCopied');
+      setTimeout(() => { copy.textContent = t('welcomeCopy'); }, 1600);
+    } catch { snack(LOCAL_CMD); }   // clipboard blocked — surface the command instead
+  };
+  dlg.showModal();
+}
+
+/** Show the welcome once, on the very first visit (per browser/profile). */
+function maybeWelcome() {
+  if (localStorage.getItem(WELCOME_KEY)) return;
+  localStorage.setItem(WELCOME_KEY, '1');
+  openWelcome();
+}
+
+function setupWelcome() {
+  $('helpBtn').onclick = openWelcome;
+  $('welcomeClose').onclick = () => $('welcomeDialog').close();
+  // click on the backdrop (outside the card) closes it
+  $('welcomeDialog').addEventListener('click', e => {
+    if (e.target === $('welcomeDialog')) $('welcomeDialog').close();
+  });
+}
+
 /* ---------------- tree library ---------------- */
 function updateTreeButton() {
   $('treeBtnName').textContent = currentTreeName() || t('newTree');
@@ -1099,6 +1210,7 @@ function applyLabels() {
   $('segAnc').textContent = t('modeAnc');
   $('searchInput').placeholder = t('search');
   $('homeBtn').title = t('home');
+  $('helpBtn').title = t('welcomeHelp');
   $('focusClear').title = t('clearFocus');
   applyTheme();
   $('langBtn').textContent = lang === 'tr' ? 'EN' : 'TR';
@@ -1156,6 +1268,7 @@ function setupAppbar() {
   setupTreeLibrary();
   setupDataDialog();
   setupStoreRow();
+  setupWelcome();
   try {
     const picked = await pickStore();
     store = picked.store; storeMode = picked.mode; savedHandle = picked.savedHandle;
@@ -1167,9 +1280,10 @@ function setupAppbar() {
   }
   let id = localStorage.getItem('ft_tree');
   if (!trees.find(td => td.id === id)) id = trees[0] && trees[0].id;
+  let opened = false;
   if (id) {
-    try { await openTree(id); return; } catch (e) { snack(t('loadError') + ': ' + e.message); }
+    try { await openTree(id); opened = true; } catch (e) { snack(t('loadError') + ': ' + e.message); }
   }
-  applyLabels();
-  renderTree();
+  if (!opened) { applyLabels(); renderTree(); }
+  maybeWelcome();
 })();
