@@ -1,0 +1,52 @@
+# Publish the static browser app to GitHub Pages.
+#
+# The site is just the client: public/ plus the bundled example tree. There is
+# no server and no build step — the app auto-detects the static host and stores
+# data locally in the visitor's browser (or a folder they pick). Your own trees/
+# folder is gitignored and never part of the artifact, so nothing private ships.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: read the repo, write the Pages deployment, prove its origin.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Run one deployment at a time; let an in-progress one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble _site (public/ + the example tree only — never trees/)
+        run: |
+          mkdir -p _site/examples
+          cp -R public/. _site/
+          cp examples/lusignan.json _site/examples/lusignan.json
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

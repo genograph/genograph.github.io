@@ -7,6 +7,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Run it in your browser — no install.** A free, static build hosted on GitHub Pages
+  (<https://metemorris.github.io/famaile-tree/>) with the same UI as the local app. Your
+  data still stays on your machine: real `.json` files in a folder you pick via the File
+  System Access API (Chromium — with `.backups/` and `.trash/`, just like the local app),
+  or your browser's own local database (IndexedDB) on other browsers and before a folder
+  is chosen. The page makes no network requests after it loads; **Export JSON** is the
+  backup/portability path for browser storage.
+- **One storage interface, three auto-detected backends** (local server, picked folder,
+  IndexedDB). The persistence layer was factored out of the UI into shared modules under
+  `public/lib/` (`treeStore`, `storage`, `serverStore`, `fsStore`, `idbStore`) reused by
+  the Node store, so id/slug rules and the tree shape stay identical everywhere.
+- `.github/workflows/pages.yml` builds and deploys the static site (only `public/` plus the
+  bundled example — never your `trees/`).
 - **Custom data folder from the app.** The tree menu now surfaces where your trees
   are saved and lets you change it — point the app at an existing folder of trees,
   or move your current trees into a new one (e.g. your Desktop). The choice is

@@ -25,6 +25,28 @@ places, relationships and interview notes. No account, no cloud, no tracking.
 - **Built for real interviews.** Per-person notes, approximate dates, uncertain
   flags, multiple marriages, maiden names, causes of death, and more.
 
+## Use it in your browser (no install)
+
+Prefer not to install anything? A free, hosted build runs entirely in your browser:
+
+**→ https://metemorris.github.io/famaile-tree/**
+
+There is still **no account, no cloud and no upload** — the page is just the app, and
+your trees are saved **on your own machine**:
+
+- **Chromium browsers (Chrome, Edge, Brave, …):** click **Open a folder** in the tree
+  menu and the app reads and writes real `.json` files in the folder you pick — just
+  like the local app, including automatic `.backups/` and a `.trash/` folder. Point it
+  at a synced folder (Dropbox, iCloud Drive, …) and your trees follow you between machines.
+- **Other browsers (Safari, Firefox), or before you pick a folder:** trees are kept in
+  your browser's own local database. They persist across reloads on that browser; use
+  **Export JSON** to back them up or carry them elsewhere.
+
+After it loads, the hosted app makes **no network requests** (a strict
+Content-Security-Policy allows same-origin only), so you can even go offline and keep working.
+
+For real files and automatic backups in **every** browser, install the local app below.
+
 ## Install & run
 
 You need [Node.js](https://nodejs.org) 18 or newer.
@@ -173,10 +195,21 @@ The core logic is split into small, dependency-free, unit-tested modules:
 
 - `public/lib/model.js` — parsing, migration, date/place normalization, serialization
 - `public/lib/layout.js` — the genealogy layout algorithm
-- `src/store.js` — safe tree file storage with backups
+- `public/lib/treeStore.js` — shared, pure store helpers (id rules, slugging, tree shape)
+- `public/lib/storage.js` — picks a storage backend for the environment, with three behind it:
+  `serverStore.js` (local API), `fsStore.js` (File System Access folder) and `idbStore.js` (IndexedDB)
+- `src/store.js` — safe tree file storage with backups (Node)
 - `src/server.js` — the local HTTP server and JSON API
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Hosting the browser app
+
+`.github/workflows/pages.yml` publishes the static app to GitHub Pages on every push to
+`main`. It assembles `_site` from `public/` plus the bundled `examples/lusignan.json` and
+nothing else — your `trees/` folder is gitignored and never part of the build, so no private
+data can ship. The same `public/` is served by the local Node server, so there is one codebase:
+it detects `/api/trees` to use the server, and falls back to browser storage when hosted statically.
 
 ## License
 

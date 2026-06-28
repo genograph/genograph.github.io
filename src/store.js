@@ -10,28 +10,16 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { slugify, isValidId, MAX_ID_LEN } from '../public/lib/treeStore.js';
 
 const MAX_BACKUPS = 50;          // per tree
-const MAX_ID_LEN = 64;
-const ID_RE = /^[a-z0-9][a-z0-9_-]*$/;
 const BACKUP_DIR = '.backups';
 const TRASH_DIR = '.trash';
 
-/** True for a safe tree id (lowercase slug, no path separators or dots). */
-export function isValidId(id) {
-  return typeof id === 'string' && id.length > 0 && id.length <= MAX_ID_LEN && ID_RE.test(id);
-}
-
-/** Turn an arbitrary name into a safe id slug (may be empty -> caller adds fallback). */
-export function slugify(name) {
-  return String(name ?? '')
-    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')   // strip accents
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, MAX_ID_LEN)
-    .replace(/-+$/g, '');
-}
+// `slugify` / `isValidId` (and the id length cap) live in the shared helper
+// module so every storage backend \u2014 Node, IndexedDB and File System Access \u2014
+// agrees on id rules. Re-exported here so existing importers/tests are unchanged.
+export { slugify, isValidId };
 
 function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
