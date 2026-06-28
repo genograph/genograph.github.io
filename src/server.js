@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — local HTTP server + JSON API
+ * Genograph — local HTTP server + JSON API
  *
  * Serves the static app from /public and exposes a small REST API over the
  * tree store. Designed to be reachable only from this machine:
@@ -127,7 +127,7 @@ function resolveUserDir(input) {
  *
  * `settings` makes the data folder changeable from the UI:
  *   - defaultDir : the built-in default, shown as a hint
- *   - locked     : true when --data / FAMAILE_TREE_DATA pinned it for this run
+ *   - locked     : true when --data / GENOGRAPH_DATA pinned it for this run
  *   - persist    : async (dir) => void, remembers the choice across launches
  *
  * @param {{ store: import('./store.js').TreeStore, publicDir?: string,
@@ -235,7 +235,7 @@ async function handleSettings(req, res, state) {
 
   if (state.locked || !state.persist) {
     throw Object.assign(
-      new Error('The data folder is fixed for this session (set with --data or FAMAILE_TREE_DATA) and cannot be changed here.'),
+      new Error('The data folder is fixed for this session (set with --data or GENOGRAPH_DATA) and cannot be changed here.'),
       { code: 'ELOCKED' });
   }
 

@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — storage detection & orchestration
+ * Genograph — storage detection & orchestration
  *
  * One codebase, three backends. At startup pickStore() chooses:
  *   - serverStore : the page is served by the bundled Node server (GET /api/trees
@@ -88,7 +88,7 @@ export async function openFolder(savedHandle) {
   }
   let handle;
   try {
-    handle = await window.showDirectoryPicker({ id: 'famaile-tree', mode: 'readwrite' });
+    handle = await window.showDirectoryPicker({ id: 'genograph', mode: 'readwrite' });
   } catch (e) {
     if (e && e.name === 'AbortError') return null;   // user dismissed the picker
     throw e;

@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — tree file storage
+ * Genograph — tree file storage
  *
  * Each family tree is one JSON file in the data directory. Saving first copies
  * the previous version into `.backups/` (newest kept). All ids are validated

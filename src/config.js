@@ -1,11 +1,11 @@
 /* ============================================================
- * Famaile Tree — persistent app settings
+ * Genograph — persistent app settings
  *
- * A tiny JSON config file in the user's home folder (`~/.famaile-tree/config.json`)
+ * A tiny JSON config file in the user's home folder (`~/.genograph/config.json`)
  * that remembers preferences across launches. Today it stores one thing: the
  * folder your trees are saved in, so a custom location (e.g. your Desktop) sticks
  * the next time you start the app. The location can be redirected for one session
- * with the --data flag or FAMAILE_TREE_DATA, which never touches this file.
+ * with the --data flag or GENOGRAPH_DATA, which never touches this file.
  * ============================================================ */
 'use strict';
 
@@ -13,7 +13,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 
-const CONFIG_DIR = process.env.FAMAILE_TREE_CONFIG_DIR || path.join(os.homedir(), '.famaile-tree');
+const CONFIG_DIR = process.env.GENOGRAPH_CONFIG_DIR || path.join(os.homedir(), '.genograph');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 /** Absolute path of the config file (handy for messages and tests). */

@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — pure data model (no DOM, no globals)
+ * Genograph — pure data model (no DOM, no globals)
  *
  * Loads a raw tree object ({ people: [...] }) into a working model,
  * resolving relationships by stable id (names can repeat in a family),

@@ -1,14 +1,14 @@
 {
-  "name": "famaile-tree",
+  "name": "genograph",
   "version": "1.0.0",
-  "description": "Offline, private family-tree browser & editor that runs in your browser. Your data never leaves your machine.",
+  "description": "Genograph — Offline, private family-tree browser & editor that runs in your browser. Your data never leaves your machine.",
   "type": "module",
   "bin": {
-    "famaile-tree": "bin/famaile-tree.js"
+    "genograph": "bin/genograph.js"
   },
   "scripts": {
-    "start": "node bin/famaile-tree.js --data ./trees",
-    "dev": "node bin/famaile-tree.js --data ./trees",
+    "start": "node bin/genograph.js --data ./trees",
+    "dev": "node bin/genograph.js --data ./trees",
     "test": "node --test",
     "test:watch": "node --test --watch"
   },
@@ -38,10 +38,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/metemorris/famaile-tree.git"
+    "url": "git+https://github.com/genograph/genograph.github.io.git"
   },
-  "homepage": "https://github.com/metemorris/famaile-tree#readme",
+  "homepage": "https://github.com/genograph/genograph.github.io#readme",
   "bugs": {
-    "url": "https://github.com/metemorris/famaile-tree/issues"
+    "url": "https://github.com/genograph/genograph.github.io/issues"
   }
 }

@@ -1,6 +1,6 @@
-# Contributing to Famaile Tree
+# Contributing to Genograph
 
-Thanks for your interest! Famaile Tree is a small, deliberately simple project:
+Thanks for your interest! Genograph is a small, deliberately simple project:
 a local Node.js server plus a vanilla-JS browser app, with **zero runtime
 dependencies**. Please keep it that way — new runtime dependencies will generally
 not be accepted.
@@ -8,8 +8,8 @@ not be accepted.
 ## Getting started
 
 ```bash
-git clone https://github.com/metemorris/famaile-tree.git
-cd famaile-tree
+git clone https://github.com/genograph/genograph.github.io.git
+cd genograph.github.io
 npm start     # runs at http://localhost:3456
 npm test      # runs the test suite
 ```
@@ -19,7 +19,7 @@ You need Node.js 18+. There is no build step.
 ## Project layout
 
 ```
-bin/famaile-tree.js   CLI entry point (arg parsing, browser launch)
+bin/genograph.js      CLI entry point (arg parsing, browser launch)
 src/server.js         Local HTTP server + JSON API
 src/store.js          Tree file storage (safe paths, atomic writes, backups)
 public/index.html     App shell

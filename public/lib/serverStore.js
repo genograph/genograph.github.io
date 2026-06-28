@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — server storage backend
+ * Genograph — server storage backend
  *
  * The original behaviour: talk to the local Node server's /api/trees endpoints.
  * Selected by pickStore() when the page is served by the bundled HTTP server.

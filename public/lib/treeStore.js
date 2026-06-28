@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — shared tree-store helpers (pure, no I/O)
+ * Genograph — shared tree-store helpers (pure, no I/O)
  *
  * These small functions are reused by every storage backend (the Node file
  * store, the IndexedDB store and the File System Access store) so id rules,

@@ -142,7 +142,7 @@ test('static — serves index.html with security headers', async () => {
   assert.match(res.headers['content-type'], /text\/html/);
   assert.ok(res.headers['content-security-policy'], 'CSP header present');
   assert.equal(res.headers['x-content-type-options'], 'nosniff');
-  assert.match(res.text, /Famaile Tree/);
+  assert.match(res.text, /Genograph/);
 });
 
 test('static — serves the ES module libraries', async () => {

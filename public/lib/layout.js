@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — tree layout (pure: no DOM)
+ * Genograph — tree layout (pure: no DOM)
  *
  * Computes card positions and connector line segments for a model rooted on
  * `focusId`, in one of three modes:

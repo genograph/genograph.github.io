@@ -1,4 +1,4 @@
-# 🌳 Famaile Tree
+# 🌳 Genograph
 
 **An offline, private family-tree browser & editor that runs in your own browser.**
 Create, load and manage as many family trees as you like — record people, dates,
@@ -9,12 +9,12 @@ places, relationships and interview notes. No account, no cloud, no tracking.
 > person, ask questions, type what you learn, and everything saves automatically
 > to a plain JSON file on your computer.
 
-<p align="center"><img src="docs/screenshot.png" alt="Famaile Tree showing the House of Lusignan example tree" width="900"></p>
+<p align="center"><img src="docs/screenshot.png" alt="Genograph showing the House of Lusignan example tree" width="900"></p>
 
 
 ---
 
-## Why Famaile Tree?
+## Why Genograph?
 
 - **Private by design.** A tiny local server serves the app to `localhost` only and
   reads/writes JSON files on your disk. Nothing is ever uploaded. A strict
@@ -29,7 +29,7 @@ places, relationships and interview notes. No account, no cloud, no tracking.
 
 Prefer not to install anything? A free, hosted build runs entirely in your browser:
 
-**→ https://metemorris.github.io/famaile-tree/**
+**→ https://genograph.github.io/**
 
 There is still **no account, no cloud and no upload** — the page is just the app, and
 your trees are saved **on your own machine**:
@@ -54,32 +54,32 @@ You need [Node.js](https://nodejs.org) 18 or newer.
 ### Fastest — run without installing
 
 ```bash
-npx famaile-tree
+npx genograph
 ```
 
 This downloads and starts the app, then opens it in your browser at
 `http://localhost:3456`. (Before it's published to npm you can run it straight from
-the repo: `npx github:metemorris/famaile-tree`.)
+the repo: `npx github:genograph/genograph.github.io`.)
 
 ### Install globally
 
 ```bash
-npm install -g famaile-tree
-famaile-tree
+npm install -g genograph
+genograph
 ```
 
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew install metemorris/tap/famaile-tree
-famaile-tree
+brew install genograph/tap/genograph
+genograph
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/metemorris/famaile-tree.git
-cd famaile-tree
+git clone https://github.com/genograph/genograph.github.io.git
+cd genograph.github.io
 npm start
 ```
 
@@ -111,38 +111,38 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
 ### Command-line options
 
 ```
-famaile-tree [options]
+genograph [options]
 
   -p, --port <n>     Port to listen on            (default 3456)
-  -d, --data <dir>   Folder to store your trees   (default ~/.famaile-tree/trees)
+  -d, --data <dir>   Folder to store your trees   (default ~/.genograph/trees)
       --host <addr>  Address to bind              (default 127.0.0.1)
       --no-open      Don't open the browser automatically
   -h, --help         Show help
   -v, --version      Show version
 ```
 
-You can also set the data folder with the `FAMAILE_TREE_DATA` environment variable.
+You can also set the data folder with the `GENOGRAPH_DATA` environment variable.
 
 ### Where your trees are saved
 
-By default trees live in `~/.famaile-tree/trees`. There are three ways to change
+By default trees live in `~/.genograph/trees`. There are three ways to change
 that, in order of priority:
 
-1. **`--data <dir>` or `FAMAILE_TREE_DATA`** — pins the folder for that run only.
+1. **`--data <dir>` or `GENOGRAPH_DATA`** — pins the folder for that run only.
 2. **In the app** — the tree menu has a **Data folder** row showing the current
    path with an option to switch to any folder (e.g. `~/Desktop/family-trees`).
    The folder is created if it doesn't exist, and you can move your existing trees
-   into it. This choice is remembered in `~/.famaile-tree/config.json` and used on
+   into it. This choice is remembered in `~/.genograph/config.json` and used on
    the next launch.
-3. **The default** — `~/.famaile-tree/trees` when nothing above is set.
+3. **The default** — `~/.genograph/trees` when nothing above is set.
 
-A `--data` flag or `FAMAILE_TREE_DATA` always wins over the remembered choice and,
+A `--data` flag or `GENOGRAPH_DATA` always wins over the remembered choice and,
 while active, the in-app picker is disabled so the session stays where you pointed it.
 
 ## Your data & privacy
 
 - Trees are stored as individual JSON files in your data folder (by default
-  `~/.famaile-tree/trees`). Each save first copies the previous version into a
+  `~/.genograph/trees`). Each save first copies the previous version into a
   `.backups/` folder (the newest copies are kept) so you can recover from mistakes.
 - The server binds to `127.0.0.1` and rejects requests with a non-local `Host`
   header, so other devices on your network cannot reach it.

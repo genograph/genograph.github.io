@@ -8,7 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - **Run it in your browser — no install.** A free, static build hosted on GitHub Pages
-  (<https://metemorris.github.io/famaile-tree/>) with the same UI as the local app. Your
+  (<https://genograph.github.io/>) with the same UI as the local app. Your
   data still stays on your machine: real `.json` files in a folder you pick via the File
   System Access API (Chromium — with `.backups/` and `.trash/`, just like the local app),
   or your browser's own local database (IndexedDB) on other browsers and before a folder
@@ -23,9 +23,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Custom data folder from the app.** The tree menu now surfaces where your trees
   are saved and lets you change it — point the app at an existing folder of trees,
   or move your current trees into a new one (e.g. your Desktop). The choice is
-  remembered across launches in `~/.famaile-tree/config.json`.
+  remembered across launches in `~/.genograph/config.json`.
 - `GET`/`PUT /api/settings` endpoint backing the data-folder picker.
-- `FAMAILE_TREE_DATA` / `--data` now pin the folder for a single run and take
+- `GENOGRAPH_DATA` / `--data` now pin the folder for a single run and take
   priority over the remembered choice (the in-app picker is disabled while pinned).
 
 ## [1.0.0] - 2026-06-28
@@ -43,7 +43,7 @@ First public release.
   pan & zoom, dark mode, and an English/Turkish interface toggle.
 - Automatic backups before every save (kept per tree).
 - Bundled example tree: the immediate relatives of Guy de Lusignan.
-- `npx famaile-tree`, global install, Homebrew formula and double-click launchers.
+- `npx genograph`, global install, Homebrew formula and double-click launchers.
 
 ### Security
 - Server binds to `127.0.0.1` only and rejects non-local `Host`/`Origin` requests
@@ -51,4 +51,4 @@ First public release.
 - Strict path handling for static files and tree storage.
 - Strict Content-Security-Policy; no external resources or network calls.
 
-[1.0.0]: https://github.com/metemorris/famaile-tree/releases/tag/v1.0.0
+[1.0.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.0.0

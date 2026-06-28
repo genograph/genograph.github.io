@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
- * Famaile Tree — command-line entry point
+ * Genograph — command-line entry point
  * Resolves the data directory, seeds the example tree on first run,
  * starts the local server and opens the app in the browser.
  * ============================================================ */
@@ -22,7 +22,7 @@ const SEED_FILE = path.join(ROOT, 'examples', 'lusignan.json');
 
 const DEFAULTS = { port: 3456, host: '127.0.0.1', open: true };
 
-const DEFAULT_DATA_DIR = path.join(os.homedir(), '.famaile-tree', 'trees');
+const DEFAULT_DATA_DIR = path.join(os.homedir(), '.genograph', 'trees');
 
 function parseArgs(argv) {
   const opts = { ...DEFAULTS, data: null };
@@ -57,24 +57,24 @@ async function version() {
 }
 
 function help() {
-  return `Famaile Tree — offline, private family-tree browser & editor
+  return `Genograph — offline, private family-tree browser & editor
 
-Usage: famaile-tree [options]
+Usage: genograph [options]
 
 Options:
   -p, --port <n>     Port to listen on            (default ${DEFAULTS.port})
-  -d, --data <dir>   Folder to store your trees   (default ~/.famaile-tree/trees)
+  -d, --data <dir>   Folder to store your trees   (default ~/.genograph/trees)
       --host <addr>  Address to bind              (default ${DEFAULTS.host})
       --no-open      Don't open the browser automatically
   -h, --help         Show this help
   -v, --version      Show version
 
 Environment:
-  FAMAILE_TREE_DATA  Data folder for this run (same effect as --data)
+  GENOGRAPH_DATA  Data folder for this run (same effect as --data)
 
 The data folder can also be changed from inside the app (tree menu → "Data
 folder"); that choice is remembered in ${configPath()} and used on the next
-launch. A --data flag or FAMAILE_TREE_DATA pins the folder for one run and
+launch. A --data flag or GENOGRAPH_DATA pins the folder for one run and
 takes priority over the remembered choice.
 
 Your trees are stored as JSON files on your computer and never leave it.`;
@@ -82,12 +82,12 @@ Your trees are stored as JSON files on your computer and never leave it.`;
 
 /**
  * Decide which folder to store trees in, in priority order:
- *   1. --data / FAMAILE_TREE_DATA  → pins the folder for this run ("locked")
+ *   1. --data / GENOGRAPH_DATA  → pins the folder for this run ("locked")
  *   2. the remembered choice in config.json
- *   3. the built-in default (~/.famaile-tree/trees)
+ *   3. the built-in default (~/.genograph/trees)
  */
 async function resolveDataDir(opts) {
-  const override = opts.data || process.env.FAMAILE_TREE_DATA;
+  const override = opts.data || process.env.GENOGRAPH_DATA;
   if (override) return { dir: path.resolve(override), locked: true };
   const cfg = await readConfig();
   if (cfg.dataDir) return { dir: path.resolve(cfg.dataDir), locked: false };
@@ -149,7 +149,7 @@ async function main() {
     actualPort = await listen(server, opts.host, opts.port);
   } catch (err) {
     if (err.code === 'EADDRINUSE') {
-      console.error(`\n  Port ${opts.port} (and the next few) are in use.\n  Try a different one:  famaile-tree --port 8080\n`);
+      console.error(`\n  Port ${opts.port} (and the next few) are in use.\n  Try a different one:  genograph --port 8080\n`);
     } else if (err.code === 'EACCES') {
       console.error(`\n  Not allowed to bind ${opts.host}:${opts.port}. Try a port above 1024.\n`);
     } else {
@@ -162,7 +162,7 @@ async function main() {
   const v = await version();
   console.log('');
   console.log('  ┌─────────────────────────────────────────────┐');
-  console.log(`  │   🌳  Famaile Tree  v${v.padEnd(23)}│`);
+  console.log(`  │   🌳  Genograph  v${v.padEnd(26)}│`);
   console.log('  └─────────────────────────────────────────────┘');
   console.log(`  App        : ${url}`);
   console.log(`  Your trees : ${dataDir}`);

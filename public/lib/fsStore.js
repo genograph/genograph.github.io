@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — File System Access storage backend
+ * Genograph — File System Access storage backend
  *
  * When the user picks a folder (Chromium browsers), each tree becomes a real
  * `<id>.json` file in that directory — exactly like the Node app's data folder,

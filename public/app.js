@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================
- * Famaile Tree — browser UI (ES module)
+ * Genograph — browser UI (ES module)
  * Persists through a pluggable store chosen at startup by ./lib/storage.js
  * (local server, a real folder via File System Access, or IndexedDB). All data
  * logic lives in ./lib/model.js and the layout in ./lib/layout.js.
@@ -64,7 +64,7 @@ const I18N = {
     dataPathLabel: 'Ağaçları bunun yerine bu klasöre kaydet',
     dataHint: 'Tam bir yol yazın (örn. ~/Desktop/aile-agaci). Klasör yoksa oluşturulur. Mevcut klasörü korumak için boş bırakın.',
     dataMove: 'Mevcut ağaçlarımı yeni klasöre taşı',
-    dataLockedMsg: 'Klasör, bu oturum için --data bayrağı veya FAMAILE_TREE_DATA değişkeniyle sabitlendi, bu yüzden buradan değiştirilemez.',
+    dataLockedMsg: 'Klasör, bu oturum için --data bayrağı veya GENOGRAPH_DATA değişkeniyle sabitlendi, bu yüzden buradan değiştirilemez.',
     dataChanged: 'Veri klasörü değiştirildi', dataMovedSnack: '{n} ağaç yeni klasöre taşındı',
     // browser storage (static / no server)
     storageLabel: 'Depolama', folderLabel: 'Klasör',
@@ -121,7 +121,7 @@ const I18N = {
     dataPathLabel: 'Save trees in this folder instead',
     dataHint: 'Type a full path (e.g. ~/Desktop/family-trees). The folder is created if it doesn’t exist. Leave blank to keep the current one.',
     dataMove: 'Move my current trees into the new folder',
-    dataLockedMsg: 'The folder is fixed for this session by a --data flag or the FAMAILE_TREE_DATA variable, so it can’t be changed here.',
+    dataLockedMsg: 'The folder is fixed for this session by a --data flag or the GENOGRAPH_DATA variable, so it can’t be changed here.',
     dataChanged: 'Data folder changed', dataMovedSnack: 'Moved {n} tree(s) to the new folder',
     // browser storage (static / no server)
     storageLabel: 'Storage', folderLabel: 'Folder',

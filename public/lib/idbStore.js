@@ -1,5 +1,5 @@
 /* ============================================================
- * Famaile Tree — IndexedDB storage backend
+ * Genograph — IndexedDB storage backend
  *
  * The universal browser fallback: each tree is one record in IndexedDB, keyed
  * by its id. Works in every modern browser and persists across reloads. On the
@@ -14,7 +14,7 @@
 
 import { isValidTree, isValidId, uniqueId, treeMeta, emptyTree, withName } from './treeStore.js';
 
-const DB_NAME = 'famaile-tree';
+const DB_NAME = 'genograph';
 const DB_VERSION = 1;
 const TREES = 'trees';
 const META = 'meta';
