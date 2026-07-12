@@ -139,12 +139,17 @@ export function buildModel(raw) {
   validateTree(raw);
   const people = raw.people;
 
-  // stable ids
+  // stable string ids — files may carry numeric ids, and relationship refs
+  // must be the same type as the ids for the byId lookups to match
   const used = new Set();
   people.forEach((p, i) => {
+    p.id = p.id == null ? '' : String(p.id);
     if (!p.id) p.id = 'p' + (i + 1);
     while (used.has(p.id)) p.id += 'x';
     used.add(p.id);
+    for (const f of ['father_id', 'mother_id']) if (p[f] != null) p[f] = String(p[f]);
+    if (Array.isArray(p.spouse_ids)) p.spouse_ids = p.spouse_ids.map(v => String(v));
+    if (Array.isArray(p.children_ids)) p.children_ids = p.children_ids.map(v => String(v));
   });
 
   const byId = new Map(people.map(p => [p.id, p]));

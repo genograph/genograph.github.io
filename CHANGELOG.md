@@ -6,6 +6,31 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- **Escaped person ids in every HTML template.** A crafted tree file could use a
+  person `id` containing markup to inject HTML into the search results, link
+  suggestions, relation chips and parent selector. The CSP already blocked script
+  execution, but imported files can no longer inject any markup at all.
+- **Anti-clickjacking for the hosted build.** Browsers ignore `frame-ancestors` in
+  a `<meta>` CSP and GitHub Pages cannot send headers, so the app now refuses to
+  run inside a frame (the local server still sends the real CSP header).
+
+### Fixed
+- **Trees with numeric ids now fully work.** Ids and relationship references from
+  imported files are coerced to strings on load; previously clicking a search
+  result or relation chip in such a tree silently did nothing.
+- **Backup rotation could trim a sibling tree's backups.** Rotating backups for a
+  tree named `family` also matched files belonging to `family-2` (both in the Node
+  store and the browser folder store); the match is now exact.
+- **Corrupted `localStorage` no longer breaks startup.** An unknown saved language
+  or view mode is ignored instead of crashing the app before it loads.
+- **Pending edits are flushed when the tab is hidden or closed** (best-effort, on
+  top of the existing unsaved-changes prompt), so quick close/switch-away no longer
+  risks losing the last second of typing.
+- **Honest delete warnings in browser storage.** When trees live in IndexedDB there
+  is no trash folder or backups, and the delete confirmations now say so instead of
+  promising recoverability that doesn't exist.
+
 ### Added
 - **Mobile-friendly touch & layout.** The canvas now supports two-finger
   **pinch-to-zoom** (and two-finger pan) on phones and tablets, in addition to the
