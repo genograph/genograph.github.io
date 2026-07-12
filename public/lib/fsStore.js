@@ -63,9 +63,13 @@ export function createFsStore(dirHandle) {
       const data = await readJson(dir, name);
       const bdir = await dir.getDirectoryHandle(BACKUP_DIR, { create: true });
       await writeJson(bdir, `${id}-${timestamp()}.json`, data);
+      // Match only this tree's own timestamped backups — a loose prefix would
+      // also match a sibling tree like "family-2" when trimming "family".
+      // (ids are already validated slugs, so they contain no regex specials)
+      const re = new RegExp(`^${id}-\\d{4}(-\\d{2}){5}\\.json$`);
       const backups = [];
       for await (const [bn, h] of bdir.entries()) {
-        if (h.kind === 'file' && bn.startsWith(id + '-') && bn.endsWith('.json')) backups.push(bn);
+        if (h.kind === 'file' && re.test(bn)) backups.push(bn);
       }
       backups.sort();
       while (backups.length > MAX_BACKUPS) await bdir.removeEntry(backups.shift());

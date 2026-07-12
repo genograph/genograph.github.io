@@ -218,3 +218,21 @@ test('example file — loads, is valid, has Guy as root with no lost references'
   }
   assert.equal(unresolved, 0, 'every reference in the example resolves to an id');
 });
+
+test('buildModel — coerces numeric ids and relationship refs to strings', () => {
+  const m = buildModel({
+    people: [
+      { id: 1, name: 'Kid', father_id: 2, mother_id: 3 },
+      { id: 2, name: 'Dad', spouse_ids: [3] },
+      { id: 3, name: 'Mum', children_ids: [1] }
+    ]
+  });
+  for (const p of m.people) assert.equal(typeof p.id, 'string');
+  const kid = m.byId.get('1');
+  assert.equal(kid.name, 'Kid');
+  assert.equal(kid._father, '2');
+  assert.equal(kid._mother, '3');
+  assert.ok(m.byId.get('2')._children.includes('1'), "dad's children resolved");
+  assert.ok(m.byId.get('2')._spouses.includes('3'), 'spouse ids resolved');
+  assert.ok(m.byId.get('3')._children.includes('1'), "mum's children resolved");
+});

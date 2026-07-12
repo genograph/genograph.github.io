@@ -170,3 +170,25 @@ test('list — skips dotfiles and unparseable files without throwing', async () 
   assert.ok(list.find(t => t.id === 'broken').error, 'broken file flagged with error');
   assert.ok(!ids.includes('.hidden'), 'dotfiles ignored');
 });
+
+test('backup trim — never deletes a sibling tree whose id shares the prefix', async () => {
+  await store.write('fam', { people: [] });
+  const bdir = path.join(dir, '.backups');
+  await fs.mkdir(bdir, { recursive: true });
+  // A backup belonging to the tree "fam-2"; it sorts before every "fam" backup,
+  // so a loose prefix match would trim it first.
+  const sibling = 'fam-2-2020-01-01-00-00-00.json';
+  await fs.writeFile(path.join(bdir, sibling), '{}\n');
+  // Plant enough old "fam" backups that the next write must trim.
+  for (let i = 0; i < 55; i++) {
+    const hh = String(Math.floor(i / 60)).padStart(2, '0');
+    const mm = String(i % 60).padStart(2, '0');
+    // eslint-disable-next-line no-await-in-loop
+    await fs.writeFile(path.join(bdir, `fam-2019-01-01-${hh}-${mm}-00.json`), '{}\n');
+  }
+  await store.write('fam', { people: [{ id: 'p1', name: 'X' }] });
+  const files = await fs.readdir(bdir);
+  assert.ok(files.includes(sibling), "the sibling tree's backup survived rotation");
+  const own = files.filter(f => /^fam-\d{4}(-\d{2}){5}\.json$/.test(f));
+  assert.ok(own.length <= 50, `expected <=50 own backups, got ${own.length}`);
+});

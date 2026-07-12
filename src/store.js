@@ -215,7 +215,9 @@ export class TreeStore {
     if (!(await this._exists(file))) return;
     await fs.mkdir(this.backupDir, { recursive: true });
     await fs.copyFile(file, path.join(this.backupDir, `${id}-${timestamp()}.json`));
-    const re = new RegExp(`^${escapeRe(id)}-.*\\.json$`);
+    // Match only this tree's own timestamped backups — a loose prefix would
+    // also match a sibling tree like "family-2" when trimming "family".
+    const re = new RegExp(`^${escapeRe(id)}-\\d{4}(-\\d{2}){5}\\.json$`);
     const backups = (await fs.readdir(this.backupDir)).filter(f => re.test(f)).sort();
     while (backups.length > MAX_BACKUPS) {
       await fs.unlink(path.join(this.backupDir, backups.shift()));
