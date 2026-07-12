@@ -9,9 +9,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - **Quick-add buttons on the canvas.** Selecting a person now shows small `+`
   buttons right on their card: one above for each still-missing parent (colored
-  like the father/mother avatars) and one below to add a child. They open the
+  like the father/mother avatars), one on the right edge for a spouse (sitting
+  on the marriage-connector line; always available, since multiple marriages
+  are common in family history) and one below to add a child. They open the
   same add-relative dialog as the panel chips, work with mouse and touch, and
   a parent recorded by name but not yet linked (a "ghost") is not offered twice.
+  When adding a spouse, the dialog now defaults the new person's sex to the
+  opposite of the selected person's (still changeable, also from the panel chip).
 
 ### Security
 - **Escaped person ids in every HTML template.** A crafted tree file could use a

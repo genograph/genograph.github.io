@@ -136,12 +136,14 @@ main { flex: 1; display: flex; min-height: 0; }
 .qadd:hover { box-shadow: var(--shadow2); transform: scale(1.12); }
 .qadd.m { background: var(--male-bg); color: var(--male); }
 .qadd.f { background: var(--female-bg); color: var(--female); }
-.qadd.c { background: var(--primary-tint); color: var(--primary-dark); }
+.qadd.c, .qadd.s { background: var(--primary-tint); color: var(--primary-dark); }
 .qa-top { top: -15px; }
 .qa-bottom { bottom: -15px; }
 .qa-center { left: 50%; margin-left: -13px; }
 .qa-left { left: 50%; margin-left: -31px; }
 .qa-right { left: 50%; margin-left: 5px; }
+/* spouse: centered on the right edge, sitting on the marriage-connector line */
+.qa-side { right: -15px; top: 50%; margin-top: -13px; }
 
 /* ===== Zoom controls & FAB ===== */
 .zoomctrl {

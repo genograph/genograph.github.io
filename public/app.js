@@ -368,8 +368,10 @@ function renderTree() {
 
 /* On-canvas quick-add: the selected person's card grows "+" buttons — father /
  * mother above it (each only while that parent is missing, colored like the
- * card avatars) and a child button below. Clicking one opens the add dialog
- * for that relation; setupCanvas routes the clicks. */
+ * card avatars), a spouse on the right edge (where marriage connectors run;
+ * always offered, since multiple marriages are common in family history) and
+ * a child below. Clicking one opens the add dialog for that relation;
+ * setupCanvas routes the clicks. */
 function renderQuickAdd(cardsEl) {
   if (!selectedId) return;
   const div = [...cardsEl.children].find(d => d.dataset.id === selectedId);
@@ -382,6 +384,7 @@ function renderQuickAdd(cardsEl) {
   if (!p._mother && !p._unres.mother) parents.push(['mother', 'f', t('addMother')]);
   let html = parents.map(([rel, cls, label], i) =>
     btn(rel, `${cls} qa-top ${parents.length === 1 ? 'qa-center' : i === 0 ? 'qa-left' : 'qa-right'}`, label)).join('');
+  html += btn('spouse', 's qa-side', t('addSpouse'));
   html += btn('child', 'c qa-bottom qa-center', t('addChild'));
   div.insertAdjacentHTML('beforeend', html);
 }
@@ -708,10 +711,14 @@ function openAddDialog(relation, anchorId) {
   addState.relation = relation;
   addState.anchorId = anchorId || null;
   addState.existingId = null;
-  addState.sex = relation === 'mother' ? 'F' : 'M';
+  const anchor = anchorId ? model.byId.get(anchorId) : null;
+  // Sensible default sex (always changeable in the dialog): mothers F,
+  // spouses default to the opposite of the anchor's sex when it is known.
+  addState.sex = relation === 'mother' ? 'F'
+    : relation === 'spouse' && anchor && anchor.sex === 'M' ? 'F'
+    : 'M';
 
   $('adTitle').textContent = t('addPerson');
-  const anchor = anchorId ? model.byId.get(anchorId) : null;
   const relKey = { child: 'relChild', spouse: 'relSpouse', father: 'relFather', mother: 'relMother', sibling: 'relSibling' }[relation];
   $('adRel').textContent = relKey && anchor ? t(relKey, { n: anchor.name }) : t('relNone');
 
