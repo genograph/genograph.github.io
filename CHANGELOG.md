@@ -6,6 +6,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Quick-add buttons on the canvas.** Selecting a person now shows small `+`
+  buttons right on their card: one above for each still-missing parent (colored
+  like the father/mother avatars) and one below to add a child. They open the
+  same add-relative dialog as the panel chips, work with mouse and touch, and
+  a parent recorded by name but not yet linked (a "ghost") is not offered twice.
+
 ### Security
 - **Escaped person ids in every HTML template.** A crafted tree file could use a
   person `id` containing markup to inject HTML into the search results, link

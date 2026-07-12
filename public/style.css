@@ -125,6 +125,24 @@ main { flex: 1; display: flex; min-height: 0; }
 .cdates, .cplace { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .notebadge { position: absolute; top: 5px; right: 7px; font-size: 11px; color: var(--warn); }
 
+/* Quick-add "+" buttons around the selected card (see renderQuickAdd) */
+.qadd {
+  position: absolute; width: 26px; height: 26px; border-radius: 50%; padding: 0;
+  border: 2px solid var(--surface); cursor: pointer; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 600; line-height: 1; font-family: inherit;
+  box-shadow: var(--shadow1);
+}
+.qadd:hover { box-shadow: var(--shadow2); transform: scale(1.12); }
+.qadd.m { background: var(--male-bg); color: var(--male); }
+.qadd.f { background: var(--female-bg); color: var(--female); }
+.qadd.c { background: var(--primary-tint); color: var(--primary-dark); }
+.qa-top { top: -15px; }
+.qa-bottom { bottom: -15px; }
+.qa-center { left: 50%; margin-left: -13px; }
+.qa-left { left: 50%; margin-left: -31px; }
+.qa-right { left: 50%; margin-left: 5px; }
+
 /* ===== Zoom controls & FAB ===== */
 .zoomctrl {
   position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 1px;

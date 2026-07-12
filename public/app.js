@@ -357,12 +357,33 @@ function renderTree() {
   }
   cardsEl.replaceChildren(frag);
   $('stats').textContent = `${model.people.length} ${t('people')} · ${placedIds.size} ${t('shown')}`;
+  renderQuickAdd(cardsEl);
 
   const chip = $('focusChip');
   if (focusId && focusId !== rootId) {
     $('focusChipName').textContent = t('focusOn') + ': ' + (model.byId.get(focusId)?.name ?? '');
     chip.classList.remove('hidden');
   } else chip.classList.add('hidden');
+}
+
+/* On-canvas quick-add: the selected person's card grows "+" buttons — father /
+ * mother above it (each only while that parent is missing, colored like the
+ * card avatars) and a child button below. Clicking one opens the add dialog
+ * for that relation; setupCanvas routes the clicks. */
+function renderQuickAdd(cardsEl) {
+  if (!selectedId) return;
+  const div = [...cardsEl.children].find(d => d.dataset.id === selectedId);
+  const p = model.byId.get(selectedId);
+  if (!div || !p) return;
+  const btn = (rel, cls, label) =>
+    `<button type="button" class="qadd ${cls}" data-addrel="${rel}" title="${esc(label)}" aria-label="${esc(label)}">+</button>`;
+  const parents = [];
+  if (!p._father && !p._unres.father) parents.push(['father', 'm', t('addFather')]);
+  if (!p._mother && !p._unres.mother) parents.push(['mother', 'f', t('addMother')]);
+  let html = parents.map(([rel, cls, label], i) =>
+    btn(rel, `${cls} qa-top ${parents.length === 1 ? 'qa-center' : i === 0 ? 'qa-left' : 'qa-right'}`, label)).join('');
+  html += btn('child', 'c qa-bottom qa-center', t('addChild'));
+  div.insertAdjacentHTML('beforeend', html);
 }
 
 function renderEmptyState() {
@@ -413,7 +434,10 @@ function zoomAt(factor, px, py) {
 
 function setupCanvas() {
   const cv = $('canvas');
-  let panning = false, sx = 0, sy = 0, stx = 0, sty = 0, moved = false, pressCard = null;
+  // pressCard / pressQadd remember what the pointer went down on: once the
+  // canvas captures the pointer, the eventual click event targets the canvas,
+  // not the element under the finger/cursor.
+  let panning = false, sx = 0, sy = 0, stx = 0, sty = 0, moved = false, pressCard = null, pressQadd = null;
   const onControl = e => e.target.closest('#focusChip, .zoomctrl, #fab, #emptyState');
   // Active pointers, so we can support one-finger pan and two-finger pinch-zoom.
   const pointers = new Map();
@@ -427,11 +451,12 @@ function setupCanvas() {
     if (pointers.size === 1) {
       moved = false;
       pressCard = e.target.closest('.card');
+      pressQadd = e.target.closest('.qadd');
       startPan(e.clientX, e.clientY);
       cv.classList.add('panning');
     } else if (pointers.size === 2) {
       // Two fingers down: switch to pinch; cancel pan/tap selection.
-      panning = false; moved = true; pressCard = null;
+      panning = false; moved = true; pressCard = null; pressQadd = null;
       const [a, b] = [...pointers.values()];
       const rect = cv.getBoundingClientRect();
       pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -479,11 +504,18 @@ function setupCanvas() {
   cv.addEventListener('click', e => {
     if (onControl(e)) return;
     if (moved) { moved = false; return; }
+    const qa = e.target.closest('.qadd') || pressQadd;
+    if (qa) {
+      pressQadd = null;
+      const host = qa.closest('.card') || pressCard;
+      if (host) openAddDialog(qa.dataset.addrel, host.dataset.id);
+      return;
+    }
     const card = e.target.closest('.card') || pressCard;
     if (card) selectPerson(card.dataset.id);
   });
   cv.addEventListener('dblclick', e => {
-    if (onControl(e)) return;
+    if (onControl(e) || e.target.closest('.qadd') || pressQadd) return;
     const card = e.target.closest('.card') || pressCard;
     if (card) { setFocus(card.dataset.id); }
   });

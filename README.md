@@ -101,8 +101,10 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
   occupation, and notes.
 - **Double-click** a person to re-root ("focus") the tree on them.
 - **Add relatives** with the `+` buttons in the panel (father / mother / spouse /
-  child / sibling). While typing a name you can link an existing person instead of
-  creating a duplicate.
+  child / sibling), or straight on the canvas: the selected person's card shows
+  `+` buttons for each missing parent (above) and for a new child (below).
+  While typing a name you can link an existing person instead of creating a
+  duplicate.
 - **Views:** *Whole Family*, *Close Family*, *Ancestors* (segmented control, top).
 - **Search** anyone (top-left), including people not connected to the current view.
 - **Dark mode** and **EN / TR** language toggle in the header.
