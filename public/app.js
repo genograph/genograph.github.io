@@ -646,7 +646,8 @@ function renderPanel() {
       <h3>${t('children')}</h3><div class="chips">${childHtml}</div>
     </div>
     <div class="panel-actions">
-      <button class="btn tonal" id="pFocus">⌖ ${t('focusHere')}</button>
+      <button class="btn tonal" id="pFocus">  ${t('focusHere')}</button>
+      <button class="btn tonal" id="pMakeRoot">Make Default</button>
       <button class="btn danger" id="pDelete">${t('del')}</button>
     </div>`;
 
@@ -654,6 +655,25 @@ function renderPanel() {
 
   $('panelClose').onclick = () => { selectedId = null; renderTree(); renderPanel(); };
   $('pFocus').onclick = () => setFocus(p.id);
+  
+  $('pMakeRoot').onclick = () => {
+    // Remove 'root' status from everyone else
+    model.people.forEach(person => { if (person.lineage === 'root') delete person.lineage; });
+    
+    // Assign root status to the currently selected person
+    p.lineage = 'root';
+    model.raw.summary = model.raw.summary || {};
+    model.raw.summary.root = p.id;
+    rootId = p.id;
+    focusId = p.id;
+    
+    // Save the file, redraw the screen, and show a confirmation toast
+    markDirty();
+    renderTree();
+    renderPanel();
+    snack('Set as default view!');
+  };
+
   $('pDelete').onclick = () => confirmDelete(p.id);
   $('pDeceased').onchange = e => { p.deceased = e.target.checked; touch(p); markDirty(); renderPanel(); renderTree(); };
   $('pIlleg').onchange = e => {
