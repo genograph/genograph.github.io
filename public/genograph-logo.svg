@@ -1,5 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
   <title id="title">Genograph</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      #logo [stroke] { stroke: #fff !important; }
+      #logo [fill]:not([fill="none"]) { fill: #fff !important; }
+    }
+  </style>
   <g id="logo">
   <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5">
     <path stroke="#1595d3" d="M613 69 600 145 464 156 418 282 403 363 428 430 470 482 520 521"/>
