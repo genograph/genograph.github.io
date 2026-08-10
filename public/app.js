@@ -12,6 +12,7 @@ import {
 } from './lib/model.js';
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
+import { initialLanguage } from './lib/i18n.js';
 
 /* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
  * send headers, so refuse to run framed (anti-clickjacking) here instead.
@@ -52,7 +53,7 @@ const I18N = {
     cause_natural: 'Doğal / yaşlılık', cause_illness: 'Hastalık', cause_accident: 'Kaza',
     cause_war: 'Savaş / çatışma', cause_childbirth: 'Doğum', cause_homicide: 'Cinayet',
     cause_suicide: 'İntihar', cause_unknown: 'Bilinmiyor', cause_other: 'Diğer',
-    people: 'kişi', shown: 'görünüyor', fit: 'SIĞDIR', home: 'Kök kişiye dön',
+    people: 'kişi', shown: 'görünüyor', fit: 'Sığdır', home: 'Kök kişiye dön',
     addedSnack: 'Eklendi: {n}', linkedSnack: 'Bağlandı: {n}', deletedSnack: 'Silindi: {n}',
     fabTitle: 'Yeni kişi ekle', dblFocus: 'Çift tıkla: bu kişiye odaklan', closePanel: 'Kapat',
     noResults: 'Sonuç yok', offTree: 'ağaç dışı', born: 'd.', died: 'ö.',
@@ -177,7 +178,7 @@ const I18N = {
   }
 };
 const storedLang = localStorage.getItem('ft_lang');
-let lang = Object.prototype.hasOwnProperty.call(I18N, storedLang) ? storedLang : 'en';
+let lang = initialLanguage(storedLang, navigator.language);
 let theme = localStorage.getItem('ft_theme') ||
   (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 const MOON_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>';
@@ -1307,6 +1308,7 @@ function setupSearch() {
 
 /* ---------------- app bar ---------------- */
 function applyLabels() {
+  document.documentElement.lang = lang;
   $('segFull').textContent = t('modeFull');
   $('segClose').textContent = t('modeClose');
   $('segAnc').textContent = t('modeAnc');
