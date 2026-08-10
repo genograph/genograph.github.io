@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Genograph</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      #logo [stroke] { stroke: #fff !important; }
+      #logo [fill]:not([fill="none"]) { fill: #fff !important; }
+    }
+  </style>
+  <g id="logo">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5">
+    <path stroke="#1595d3" d="M613 69 600 145 464 156 418 282 403 363 428 430 470 482 520 521"/>
+    <path stroke="#0b2e59" d="M600 145 558 207 418 282 587 301 621 361 613 428 573 478 520 521 468 563 423 613 411 681 423 747 459 805 460 876"/>
+    <path stroke="#1595d3" d="M520 521 564 554 604 594 633 652 620 725 570 794 492 834 460 876"/>
+    <path stroke="#6ecbe9" d="M464 156 462 234 587 301M462 234 418 282M403 363 428 430M428 430 470 482"/>
+    <path stroke="#10b8dd" d="M470 482 520 521 564 554 604 594M604 594 633 652M423 747 459 805"/>
+
+    <path stroke="#149bd7" d="M464 156 558 207 600 145M464 156 587 301M558 207 418 282M418 282 587 301"/>
+    <path stroke="#3f6084" d="M462 234 558 207M418 282 621 361M403 363 621 361M428 430 613 428M470 482 573 478"/>
+    <path stroke="#1595d3" d="M403 363 428 430 587 301M428 430 587 301M470 482 573 478M470 482 520 521M573 478 520 521"/>
+
+    <path stroke="#0b2e59" d="M468 563 423 613M423 613C473 630 555 621 604 594M423 613 411 681M411 681C482 707 568 679 633 652"/>
+    <path stroke="#72d2ec" d="M564 554 633 652M564 554 604 594 520 521M604 594 411 681M411 681 620 725"/>
+    <path stroke="#1595d3" d="M468 563 564 554M423 613 604 594M411 681 633 652M411 681 423 747M633 652 620 725M423 747 620 725"/>
+    <path stroke="#126a9d" d="M423 747 570 794M620 725 570 794M459 805 570 794"/>
+    <path stroke="#74d4ed" d="M411 681 459 805M459 805 492 834M459 805 460 876"/>
+    <path stroke="#0b2e59" d="M570 794 492 834 460 876"/>
+  </g>
+
+  <g>
+    <circle cx="613" cy="69" r="11" fill="#0b2e59"/>
+    <circle cx="600" cy="145" r="23" fill="#49688e"/>
+    <circle cx="464" cy="156" r="15" fill="#119bdf"/>
+    <circle cx="558" cy="207" r="14" fill="#149bd7"/>
+    <circle cx="462" cy="234" r="6" fill="#75d3ed"/>
+    <circle cx="418" cy="282" r="23" fill="#119bdf"/>
+    <circle cx="587" cy="301" r="15" fill="#10b8dd"/>
+    <circle cx="403" cy="363" r="21" fill="#119bdf"/>
+    <circle cx="621" cy="361" r="19" fill="#49688e"/>
+    <circle cx="428" cy="430" r="15" fill="#10b8dd"/>
+    <circle cx="613" cy="428" r="19" fill="#0b2e59"/>
+    <circle cx="470" cy="482" r="14" fill="#10b8dd"/>
+    <circle cx="573" cy="478" r="15" fill="#49688e"/>
+    <circle cx="520" cy="521" r="17" fill="#119bdf"/>
+    <circle cx="468" cy="563" r="13" fill="#49688e"/>
+    <circle cx="564" cy="554" r="12" fill="#10b8dd"/>
+    <circle cx="423" cy="613" r="19" fill="#0b2e59"/>
+    <circle cx="604" cy="594" r="15" fill="#10b8dd"/>
+    <circle cx="411" cy="681" r="21" fill="#49688e"/>
+    <circle cx="633" cy="652" r="20" fill="#119bdf"/>
+    <circle cx="620" cy="725" r="25" fill="#119bdf"/>
+    <circle cx="423" cy="747" r="17" fill="#126a9d"/>
+    <circle cx="459" cy="805" r="13" fill="#10b8dd"/>
+    <circle cx="570" cy="794" r="15" fill="#49688e"/>
+    <circle cx="492" cy="834" r="7" fill="#0b2e59"/>
+    <circle cx="460" cy="876" r="13" fill="#0b2e59"/>
+  </g>
+  </g>
+</svg>
