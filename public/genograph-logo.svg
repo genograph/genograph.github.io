@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="360 40 320 860" role="img" aria-labelledby="title">
   <title id="title">Genograph</title>
+  <g id="logo">
   <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5">
     <path stroke="#1595d3" d="M613 69 600 145 464 156 418 282 403 363 428 430 470 482 520 521"/>
     <path stroke="#0b2e59" d="M600 145 558 207 418 282 587 301 621 361 613 428 573 478 520 521 468 563 423 613 411 681 423 747 459 805 460 876"/>
@@ -46,5 +47,6 @@
     <circle cx="570" cy="794" r="15" fill="#49688e"/>
     <circle cx="492" cy="834" r="7" fill="#0b2e59"/>
     <circle cx="460" cy="876" r="13" fill="#0b2e59"/>
+  </g>
   </g>
 </svg>

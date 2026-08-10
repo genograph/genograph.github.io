@@ -418,10 +418,11 @@ dialog { background: var(--surface); color: var(--text); }
 .welcome-x:hover { background: var(--hover); }
 .welcome-hero { text-align: center; padding: 4px 4px 0; }
 .welcome-logo {
-  width: 72px; height: 92px; border-radius: 22px; background: #e8f0fe;
+  width: 72px; height: 92px; border-radius: 22px; background: #fff;
+  box-shadow: inset 0 0 0 1px #d9e4f2;
   display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;
 }
-.welcome-logo img { width: 38px; height: 78px; object-fit: contain; }
+.welcome-logo svg { width: 38px; height: 78px; }
 .welcome-hero h2 { font-size: 21px; font-weight: 600; margin: 0 0 7px; }
 .welcome-intro { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin: 0 auto; max-width: 384px; }
 .welcome-exploring {

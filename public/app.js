@@ -183,7 +183,7 @@ let theme = localStorage.getItem('ft_theme') ||
 const MOON_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>';
 const SUN_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0-5 2 3h-4l2-3zm0 20-2-3h4l-2 3zM2 12l3-2v4l-3-2zm20 0-3 2v-4l3 2zM4.9 4.9 8.4 6 6 8.4 4.9 4.9zm14.2 14.2L15.6 18l2.4-2.4 1.1 3.5zM4.9 19.1 6 15.6 8.4 18l-3.5 1.1zM19.1 4.9 18 8.4 15.6 6l3.5-1.1z"/></svg>';
 // welcome-dialog icons
-const BRAND_IMG = '<img src="genograph-logo.svg" alt="">';
+const BRAND_SVG = '<svg viewBox="360 40 320 860" aria-hidden="true"><use href="genograph-logo.svg#logo"></use></svg>';
 const W_EDIT_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg>';
 const W_ADD_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>';
 const W_TREE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/></svg>';
@@ -983,7 +983,7 @@ function welcomeHTML() {
     `<span class="txt"><b>${esc(title)}</b> <span>${esc(body)}</span></span></li>`;
   return `
     <div class="welcome-hero">
-      <div class="welcome-logo">${BRAND_IMG}</div>
+      <div class="welcome-logo">${BRAND_SVG}</div>
       <h2>${esc(t('welcomeTitle'))}</h2>
       <p class="welcome-intro">${esc(t('welcomeIntro'))}</p>
     </div>
