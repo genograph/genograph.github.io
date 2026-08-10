@@ -96,7 +96,7 @@ body { background: var(--bg); color: var(--text); display: flex; flex-direction:
 .savestatus.error { color: var(--danger); font-weight: 600; }
 
 /* ===== Layout ===== */
-main { flex: 1; display: flex; min-height: 0; }
+main { flex: 1; display: flex; min-height: 0; position: relative; }
 #canvas { flex: 1; position: relative; overflow: hidden; cursor: grab; touch-action: none; }
 #canvas.panning { cursor: grabbing; }
 #world { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
