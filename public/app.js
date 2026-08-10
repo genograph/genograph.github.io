@@ -13,6 +13,14 @@ import {
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 
+/* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
+ * send headers, so refuse to run framed (anti-clickjacking) here instead.
+ * The local Node server additionally enforces this with a real CSP header. */
+if (window.top !== window.self) {
+  try { window.top.location.replace(window.location.href); } catch { /* cross-origin parent */ }
+  throw new Error('Genograph does not run inside a frame.');
+}
+
 /* ---------------- i18n ---------------- */
 const I18N = {
   tr: {
@@ -25,6 +33,7 @@ const I18N = {
     addChild: 'Çocuk ekle', addSpouse: 'Eş ekle', addFather: 'Baba ekle', addMother: 'Anne ekle', addSibling: 'Kardeş ekle', addPerson: 'Yeni kişi ekle',
     focusHere: 'Odakla', del: 'Sil', confirmDelTitle: 'Kişi silinsin mi?',
     confirmDelMsg: '"{n}" ağaçtan ve dosyadan kalıcı olarak silinecek. (Eski yedekler backups klasöründe durur.)',
+    confirmDelMsgBrowser: '"{n}" ağaçtan kalıcı olarak silinecek.',
     cancel: 'Vazgeç', add: 'Ekle', link: 'Bağla', ok: 'Tamam',
     otherParent: 'Diğer ebeveyn', nonePar: '(belirtilme)',
     relChild: 'Yeni kişi → {n} kişisinin çocuğu', relSpouse: 'Yeni kişi → {n} kişisinin eşi',
@@ -53,6 +62,7 @@ const I18N = {
     newTreeTitle: 'Yeni ağaç', renameTreeTitle: 'Ağacı yeniden adlandır',
     confirmDelTreeTitle: 'Bu ağaç silinsin mi?',
     confirmDelTreeMsg: '"{n}" veri klasöründeki çöp kutusuna taşınacak.',
+    confirmDelTreeMsgBrowser: '"{n}" bu tarayıcının depolamasından kalıcı olarak silinecek. Bir kopya istiyorsanız önce JSON olarak dışa aktarın.',
     treeCreated: 'Oluşturuldu: {n}', treeImported: 'İçe aktarıldı: {n}', treeDeleted: 'Silindi: {n}', treeRenamed: 'Yeniden adlandırıldı',
     importInvalid: 'Bu dosya geçerli bir ağaç değil ("people" listesi gerekli).', importFailed: 'İçe aktarma başarısız',
     loadError: 'Ağaç yüklenemedi',
@@ -99,6 +109,7 @@ const I18N = {
     addChild: 'Add child', addSpouse: 'Add spouse', addFather: 'Add father', addMother: 'Add mother', addSibling: 'Add sibling', addPerson: 'Add person',
     focusHere: 'Focus', del: 'Delete', confirmDelTitle: 'Delete person?',
     confirmDelMsg: '"{n}" will be permanently removed from the tree and the file. (Old backups stay in the backups folder.)',
+    confirmDelMsgBrowser: '"{n}" will be permanently removed from the tree.',
     cancel: 'Cancel', add: 'Add', link: 'Link', ok: 'OK',
     otherParent: 'Other parent', nonePar: '(unspecified)',
     relChild: 'New person → child of {n}', relSpouse: 'New person → spouse of {n}',
@@ -127,6 +138,7 @@ const I18N = {
     newTreeTitle: 'New tree', renameTreeTitle: 'Rename tree',
     confirmDelTreeTitle: 'Delete this tree?',
     confirmDelTreeMsg: '"{n}" will be moved to the trash folder inside your data directory.',
+    confirmDelTreeMsgBrowser: '"{n}" will be permanently deleted from this browser\'s storage. Export it as JSON first if you want a copy.',
     treeCreated: 'Created: {n}', treeImported: 'Imported: {n}', treeDeleted: 'Deleted: {n}', treeRenamed: 'Renamed',
     importInvalid: 'That file is not a valid tree (it needs a "people" array).', importFailed: 'Import failed',
     loadError: 'Could not load tree',
@@ -164,7 +176,8 @@ const I18N = {
     welcomeStart: 'Start exploring'
   }
 };
-let lang = localStorage.getItem('ft_lang') || 'en';
+const storedLang = localStorage.getItem('ft_lang');
+let lang = Object.prototype.hasOwnProperty.call(I18N, storedLang) ? storedLang : 'en';
 let theme = localStorage.getItem('ft_theme') ||
   (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 const MOON_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>';
@@ -197,7 +210,8 @@ let savedHandle = null;     // a remembered folder handle awaiting reconnect (br
 let currentTreeId = null;
 let focusId = null;
 let rootId = null;
-let mode = localStorage.getItem('ft_mode') || 'full';   // full | close | ancestors
+const MODES = ['full', 'close', 'ancestors'];
+let mode = MODES.includes(localStorage.getItem('ft_mode')) ? localStorage.getItem('ft_mode') : 'full';
 let selectedId = null;
 let dirty = false, saveTimer = null;
 const view = { tx: 0, ty: 0, s: 1 };
@@ -282,6 +296,12 @@ async function saveNow() {
   }
 }
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+// Flush a pending autosave when the tab is hidden or closing (best-effort;
+// the beforeunload prompt above remains the backstop if the write can't finish).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && dirty) saveNow();
+});
+window.addEventListener('pagehide', () => { if (dirty) saveNow(); });
 
 /* ---------------- render ---------------- */
 function renderTree() {
@@ -337,12 +357,36 @@ function renderTree() {
   }
   cardsEl.replaceChildren(frag);
   $('stats').textContent = `${model.people.length} ${t('people')} · ${placedIds.size} ${t('shown')}`;
+  renderQuickAdd(cardsEl);
 
   const chip = $('focusChip');
   if (focusId && focusId !== rootId) {
     $('focusChipName').textContent = t('focusOn') + ': ' + (model.byId.get(focusId)?.name ?? '');
     chip.classList.remove('hidden');
   } else chip.classList.add('hidden');
+}
+
+/* On-canvas quick-add: the selected person's card grows "+" buttons — father /
+ * mother above it (each only while that parent is missing, colored like the
+ * card avatars), a spouse on the right edge (where marriage connectors run;
+ * always offered, since multiple marriages are common in family history) and
+ * a child below. Clicking one opens the add dialog for that relation;
+ * setupCanvas routes the clicks. */
+function renderQuickAdd(cardsEl) {
+  if (!selectedId) return;
+  const div = [...cardsEl.children].find(d => d.dataset.id === selectedId);
+  const p = model.byId.get(selectedId);
+  if (!div || !p) return;
+  const btn = (rel, cls, label) =>
+    `<button type="button" class="qadd ${cls}" data-addrel="${rel}" title="${esc(label)}" aria-label="${esc(label)}">+</button>`;
+  const parents = [];
+  if (!p._father && !p._unres.father) parents.push(['father', 'm', t('addFather')]);
+  if (!p._mother && !p._unres.mother) parents.push(['mother', 'f', t('addMother')]);
+  let html = parents.map(([rel, cls, label], i) =>
+    btn(rel, `${cls} qa-top ${parents.length === 1 ? 'qa-center' : i === 0 ? 'qa-left' : 'qa-right'}`, label)).join('');
+  html += btn('spouse', 's qa-side', t('addSpouse'));
+  html += btn('child', 'c qa-bottom qa-center', t('addChild'));
+  div.insertAdjacentHTML('beforeend', html);
 }
 
 function renderEmptyState() {
@@ -393,7 +437,10 @@ function zoomAt(factor, px, py) {
 
 function setupCanvas() {
   const cv = $('canvas');
-  let panning = false, sx = 0, sy = 0, stx = 0, sty = 0, moved = false, pressCard = null;
+  // pressCard / pressQadd remember what the pointer went down on: once the
+  // canvas captures the pointer, the eventual click event targets the canvas,
+  // not the element under the finger/cursor.
+  let panning = false, sx = 0, sy = 0, stx = 0, sty = 0, moved = false, pressCard = null, pressQadd = null;
   const onControl = e => e.target.closest('#focusChip, .zoomctrl, #fab, #emptyState');
   // Active pointers, so we can support one-finger pan and two-finger pinch-zoom.
   const pointers = new Map();
@@ -407,11 +454,12 @@ function setupCanvas() {
     if (pointers.size === 1) {
       moved = false;
       pressCard = e.target.closest('.card');
+      pressQadd = e.target.closest('.qadd');
       startPan(e.clientX, e.clientY);
       cv.classList.add('panning');
     } else if (pointers.size === 2) {
       // Two fingers down: switch to pinch; cancel pan/tap selection.
-      panning = false; moved = true; pressCard = null;
+      panning = false; moved = true; pressCard = null; pressQadd = null;
       const [a, b] = [...pointers.values()];
       const rect = cv.getBoundingClientRect();
       pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -459,11 +507,18 @@ function setupCanvas() {
   cv.addEventListener('click', e => {
     if (onControl(e)) return;
     if (moved) { moved = false; return; }
+    const qa = e.target.closest('.qadd') || pressQadd;
+    if (qa) {
+      pressQadd = null;
+      const host = qa.closest('.card') || pressCard;
+      if (host) openAddDialog(qa.dataset.addrel, host.dataset.id);
+      return;
+    }
     const card = e.target.closest('.card') || pressCard;
     if (card) selectPerson(card.dataset.id);
   });
   cv.addEventListener('dblclick', e => {
-    if (onControl(e)) return;
+    if (onControl(e) || e.target.closest('.qadd') || pressQadd) return;
     const card = e.target.closest('.card') || pressCard;
     if (card) { setFocus(card.dataset.id); }
   });
@@ -522,7 +577,7 @@ function renderPanel() {
   }
   const p = model.byId.get(selectedId);
   const nameOf = id => model.byId.get(id)?.name || '?';
-  const chip = (id, extra) => `<button class="chip${extra || ''}" data-go="${id}">${esc(nameOf(id))}</button>`;
+  const chip = (id, extra) => `<button class="chip${extra || ''}" data-go="${esc(id)}">${esc(nameOf(id))}</button>`;
   const ghost = n => `<span class="chip ghost" title="?">${esc(n)}</span>`;
 
   let badge = '';
@@ -656,10 +711,14 @@ function openAddDialog(relation, anchorId) {
   addState.relation = relation;
   addState.anchorId = anchorId || null;
   addState.existingId = null;
-  addState.sex = relation === 'mother' ? 'F' : 'M';
+  const anchor = anchorId ? model.byId.get(anchorId) : null;
+  // Sensible default sex (always changeable in the dialog): mothers F,
+  // spouses default to the opposite of the anchor's sex when it is known.
+  addState.sex = relation === 'mother' ? 'F'
+    : relation === 'spouse' && anchor && anchor.sex === 'M' ? 'F'
+    : 'M';
 
   $('adTitle').textContent = t('addPerson');
-  const anchor = anchorId ? model.byId.get(anchorId) : null;
   const relKey = { child: 'relChild', spouse: 'relSpouse', father: 'relFather', mother: 'relMother', sibling: 'relSibling' }[relation];
   $('adRel').textContent = relKey && anchor ? t(relKey, { n: anchor.name }) : t('relNone');
 
@@ -699,7 +758,7 @@ function openAddDialog(relation, anchorId) {
     $('lbOther').textContent = t('otherParent');
     const sel = $('apOther');
     sel.innerHTML = `<option value="">${t('nonePar')}</option>` +
-      anchor._spouses.map(id => `<option value="${id}">${esc(model.byId.get(id)?.name || '?')}</option>`).join('');
+      anchor._spouses.map(id => `<option value="${esc(id)}">${esc(model.byId.get(id)?.name || '?')}</option>`).join('');
     sel.value = anchor._spouses.length === 1 ? anchor._spouses[0] : '';
     fOther.classList.remove('hidden');
   } else fOther.classList.add('hidden');
@@ -735,7 +794,7 @@ function setupAddDialog() {
       .slice(0, 8);
     if (!hits.length) { box.classList.add('hidden'); return; }
     box.innerHTML = hits.map(p =>
-      `<div class="item" data-pick="${p.id}"><span>${esc(p.name)}</span><span class="meta">${esc(lifeSpan(p))}</span></div>`).join('');
+      `<div class="item" data-pick="${esc(p.id)}"><span>${esc(p.name)}</span><span class="meta">${esc(lifeSpan(p))}</span></div>`).join('');
     box.classList.remove('hidden');
     box.querySelectorAll('[data-pick]').forEach(it => {
       it.onmousedown = e => {
@@ -844,7 +903,8 @@ function commitAdd() {
 /* ---------------- delete person ---------------- */
 function confirmDelete(id) {
   const p = model.byId.get(id);
-  askConfirm(t('confirmDelTitle'), t('confirmDelMsg', { n: p.name }), t('del')).then(ok => {
+  const msgKey = storeMode === 'idb' ? 'confirmDelMsgBrowser' : 'confirmDelMsg';
+  askConfirm(t('confirmDelTitle'), t(msgKey, { n: p.name }), t('del')).then(ok => {
     if (ok) deletePerson(id);
   });
 }
@@ -1046,7 +1106,8 @@ async function deleteCurrent() {
   closeTreeMenu();
   if (!currentTreeId) return;
   const nm = currentTreeName();
-  const ok = await askConfirm(t('confirmDelTreeTitle'), t('confirmDelTreeMsg', { n: nm }), t('del'));
+  const msgKey = storeMode === 'idb' ? 'confirmDelTreeMsgBrowser' : 'confirmDelTreeMsg';
+  const ok = await askConfirm(t('confirmDelTreeTitle'), t(msgKey, { n: nm }), t('del'));
   if (!ok) return;
   try {
     const deletedId = currentTreeId;
@@ -1218,7 +1279,7 @@ function setupSearch() {
     const hits = model.people.filter(p => searchText(p).includes(q)).slice(0, 12);
     box.innerHTML = hits.length
       ? hits.map(p =>
-        `<div class="item" data-id="${p.id}"><span>${esc(p.name)}</span>` +
+        `<div class="item" data-id="${esc(p.id)}"><span>${esc(p.name)}</span>` +
         `<span class="meta">${esc(lifeSpan(p))}${placedIds.has(p.id) ? '' : ' <span class="off">· ' + t('offTree') + '</span>'}</span></div>`).join('')
       : `<div class="item"><span class="meta">${t('noResults')}</span></div>`;
     box.classList.remove('hidden');
