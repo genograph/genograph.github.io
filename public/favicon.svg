@@ -1,7 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect x="14" y="17" width="4" height="11" rx="1.5" fill="#8d6e63"/>
-  <circle cx="9.5" cy="15" r="5.5" fill="#188038"/>
-  <circle cx="22.5" cy="15" r="5.5" fill="#188038"/>
-  <circle cx="16" cy="11" r="8" fill="#34a853"/>
-  <circle cx="12.5" cy="9.5" r="2" fill="#81c995"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Genograph</title>
+  <rect width="256" height="256" rx="56" fill="#e8f0fe"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="3">
+    <path stroke="#1595d3" d="M67 26 57 76 74 118 100 151 131 175"/>
+    <path stroke="#0b2e59" d="M67 26 173 38 194 75 189 117 165 148 131 175 99 201 70 233"/>
+    <path stroke="#10b8dd" d="M131 175 159 196 184 221"/>
+    <path stroke="#3f6084" d="M57 76 194 75M74 118 189 117M100 151 165 148"/>
+    <path stroke="#1595d3" d="M57 76 173 38M74 118 173 38M100 151 131 175M165 148 131 175M99 201 159 196"/>
+    <path stroke="#0b2e59" d="M99 201 70 233M70 233C108 245 153 239 184 221"/>
+    <path stroke="#72d2ec" d="M159 196 184 221M159 196 131 175"/>
+  </g>
+  <g>
+    <circle cx="67" cy="26" r="16" fill="#119bdf"/>
+    <circle cx="173" cy="38" r="12" fill="#10b8dd"/>
+    <circle cx="57" cy="76" r="15" fill="#119bdf"/>
+    <circle cx="194" cy="75" r="14" fill="#49688e"/>
+    <circle cx="74" cy="118" r="13" fill="#10b8dd"/>
+    <circle cx="189" cy="117" r="15" fill="#0b2e59"/>
+    <circle cx="100" cy="151" r="11" fill="#10b8dd"/>
+    <circle cx="165" cy="148" r="12" fill="#49688e"/>
+    <circle cx="131" cy="175" r="14" fill="#119bdf"/>
+    <circle cx="99" cy="201" r="10" fill="#49688e"/>
+    <circle cx="159" cy="196" r="10" fill="#10b8dd"/>
+    <circle cx="70" cy="233" r="15" fill="#0b2e59"/>
+    <circle cx="184" cy="221" r="13" fill="#10b8dd"/>
+  </g>
 </svg>
