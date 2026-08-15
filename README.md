@@ -1,4 +1,6 @@
-# 🌳 Genograph
+<h1><img src="public/genograph-logo.svg" alt="Genograph logo" width="32" height="32" align="absmiddle"> Genograph</h1>
+
+[![Version 1.2.0](https://img.shields.io/badge/version-1.2.0-1595d3)](https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0)
 
 **An offline, private family-tree browser & editor that runs in your own browser.**
 Create, load and manage as many family trees as you like — record people, dates,
@@ -91,6 +93,8 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
   trees* to take them with you. Your choice is remembered the next time you launch.
 - **Click** a person to open the side panel and edit name, sex, birth/death/burial,
   occupation, and notes.
+- **Choose the default person** from the side panel to decide who the tree opens on;
+  the choice is saved with the tree.
 - **Double-click** a person to re-root ("focus") the tree on them.
 - **Add relatives** with the `+` buttons in the panel (father / mother / spouse /
   child / sibling), or straight on the canvas: the selected person's card shows

@@ -6,6 +6,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-16
+
+### Added
+- **Choose the default person for each tree.** The person panel now has a
+  translated **Set as default** action that saves the choice in `summary.root`,
+  immediately recenters the canvas and restores that person after reload. Older
+  tree files still fall back safely to their legacy root marker or first person.
+- **Pull-request test coverage.** GitHub Actions now runs the full test suite on
+  Node.js 18, 20 and 22 for every pull request.
+
 ## [1.1.0] - 2026-08-15
 
 ### Added
@@ -101,6 +111,7 @@ First public release.
 - Strict path handling for static files and tree storage.
 - Strict Content-Security-Policy; no external resources or network calls.
 
-[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0
 [1.1.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.1.0
 [1.0.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.0.0
