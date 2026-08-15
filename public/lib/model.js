@@ -236,10 +236,28 @@ export function buildModel(raw) {
   return { raw, people, byId };
 }
 
-/** The reference/root person id for a model: lineage:'root', else the first person. */
+/**
+ * The reference/root person id for a model. A valid summary.root is the source
+ * of truth; lineage:'root' remains a backwards-compatible fallback for older
+ * files, followed by the first person in the document.
+ */
 export function rootIdOf(model) {
+  const configured = model.raw?.summary?.root;
+  const configuredId = configured == null ? null : String(configured);
+  if (configuredId && model.byId.has(configuredId)) return configuredId;
   const root = model.people.find(p => p.lineage === 'root') || model.people[0];
   return root ? root.id : null;
+}
+
+/** Set the persisted root person when id belongs to this model. */
+export function setRootId(model, id) {
+  const rootId = id == null ? null : String(id);
+  if (!rootId || !model.byId.has(rootId)) return false;
+  if (!model.raw.summary || typeof model.raw.summary !== 'object' || Array.isArray(model.raw.summary)) {
+    model.raw.summary = {};
+  }
+  model.raw.summary.root = rootId;
+  return true;
 }
 
 /* ---------------- serialize ---------------- */
@@ -279,7 +297,10 @@ export function serialize(model) {
   });
   const raw = model.raw;
   raw.people = people;
-  raw.summary = raw.summary || {};
+  if (!raw.summary || typeof raw.summary !== 'object' || Array.isArray(raw.summary)) raw.summary = {};
+  const rootId = rootIdOf(model);
+  if (rootId) raw.summary.root = rootId;
+  else delete raw.summary.root;
   raw.summary.total_people = people.length;
   raw.summary.last_modified = new Date().toISOString();
   return raw;

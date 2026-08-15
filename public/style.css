@@ -208,6 +208,7 @@ html[lang="tr"] #zoomFit { font-size: 10px; }
 .btn {
   border: none; border-radius: 20px; padding: 9px 18px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
 }
+.btn.icon-label { display: inline-flex; align-items: center; gap: 6px; }
 .btn.filled { background: var(--primary); color: var(--on-primary); }
 .btn.filled:hover { background: var(--primary-dark); }
 .btn.tonal { background: var(--primary-tint); color: var(--primary-dark); }

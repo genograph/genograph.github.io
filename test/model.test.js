@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  normalizeDate, splitPlaceCountry, buildModel, serialize, rootIdOf,
+  normalizeDate, splitPlaceCountry, buildModel, serialize, rootIdOf, setRootId,
   birthSortIds, siblingIds, isValidTree, validateTree, yearOf, norm, searchText
 } from '../public/lib/model.js';
 
@@ -186,7 +186,66 @@ test('siblingIds — other children of the shared parents', () => {
   assert.ok(!sibs.includes('p11'), 'spouse is not a sibling');
 });
 
-test('rootIdOf — prefers lineage:root, falls back to first person', () => {
+test('rootIdOf — prefers a valid summary.root', () => {
+  const m = buildModel({
+    summary: { root: 'b' },
+    people: [
+      { id: 'a', name: 'Legacy root', lineage: 'root' },
+      { id: 'b', name: 'Configured root' }
+    ]
+  });
+  assert.equal(rootIdOf(m), 'b');
+});
+
+test('rootIdOf — invalid summary.root falls back to legacy root, then first person', () => {
+  const legacy = buildModel({
+    summary: { root: 'missing' },
+    people: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B', lineage: 'root' }]
+  });
+  assert.equal(rootIdOf(legacy), 'b');
+  assert.equal(rootIdOf(buildModel({ summary: { root: 'missing' }, people: [{ id: 'x', name: 'X' }] })), 'x');
+  assert.equal(rootIdOf(buildModel({ summary: { root: 'missing' }, people: [] })), null);
+});
+
+test('setRootId — survives serialization without changing lineage metadata', () => {
+  const m = buildModel({
+    summary: { root: 'a' },
+    people: [
+      { id: 'a', name: 'Old root', lineage: 'root' },
+      { id: 'b', name: 'Ancestor', lineage: 'direct_ancestor' }
+    ]
+  });
+
+  assert.equal(setRootId(m, 'b'), true);
+  assert.equal(setRootId(m, 'missing'), false);
+  const out = serialize(m);
+  assert.equal(out.summary.root, 'b');
+  assert.equal(out.people.find(p => p.id === 'a').lineage, 'root');
+  assert.equal(out.people.find(p => p.id === 'b').lineage, 'direct_ancestor');
+
+  const reloaded = buildModel(JSON.parse(JSON.stringify(out)));
+  assert.equal(rootIdOf(reloaded), 'b');
+  assert.equal(reloaded.byId.get('b').lineage, 'direct_ancestor');
+
+  assert.equal(setRootId(reloaded, 'a'), true);
+  const changedAgain = serialize(reloaded);
+  assert.equal(changedAgain.summary.root, 'a');
+  assert.equal(changedAgain.people.find(p => p.id === 'b').lineage, 'direct_ancestor');
+});
+
+test('serialize — repairs a stale root and omits it for an empty tree', () => {
+  const stale = buildModel({ summary: { root: 'missing' }, people: [{ id: 'x', name: 'X' }] });
+  assert.equal(serialize(stale).summary.root, 'x');
+
+  const empty = buildModel({ summary: { root: 'missing' }, people: [] });
+  assert.ok(!('root' in serialize(empty).summary));
+
+  const malformed = buildModel({ summary: 'invalid', people: [{ id: 'x', name: 'X' }] });
+  assert.equal(setRootId(malformed, 'x'), true);
+  assert.equal(serialize(malformed).summary.root, 'x');
+});
+
+test('rootIdOf — legacy example and first-person fallback remain supported', () => {
   assert.equal(rootIdOf(buildModel(loadExample())), 'p1');
   assert.equal(rootIdOf(buildModel({ people: [{ id: 'x', name: 'X' }] })), 'x');
 });
