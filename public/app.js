@@ -7,7 +7,7 @@
  * ============================================================ */
 
 import {
-  buildModel, serialize, rootIdOf, isValidTree,
+  buildModel, serialize, rootIdOf, setRootId, isValidTree,
   birthSortIds, siblingIds, norm, searchText, yearOf, CAUSES, DATE_RE
 } from './lib/model.js';
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
@@ -32,7 +32,8 @@ const I18N = {
     burialPlace: 'Defin yeri', occupation: 'Meslek', notes: 'Notlar', notesPh: 'Görüşme notları…', deceased: 'Vefat etmiş',
     father: 'Baba', mother: 'Anne', spouses: 'Eş(ler)', children: 'Çocuklar', siblings: 'Kardeşler',
     addChild: 'Çocuk ekle', addSpouse: 'Eş ekle', addFather: 'Baba ekle', addMother: 'Anne ekle', addSibling: 'Kardeş ekle', addPerson: 'Yeni kişi ekle',
-    focusHere: 'Odakla', del: 'Sil', confirmDelTitle: 'Kişi silinsin mi?',
+    focusHere: 'Odakla', setDefault: 'Varsayılan yap', defaultSetSnack: 'Varsayılan kişi {n} olarak ayarlandı',
+    del: 'Sil', confirmDelTitle: 'Kişi silinsin mi?',
     confirmDelMsg: '"{n}" ağaçtan ve dosyadan kalıcı olarak silinecek. (Eski yedekler backups klasöründe durur.)',
     confirmDelMsgBrowser: '"{n}" ağaçtan kalıcı olarak silinecek.',
     cancel: 'Vazgeç', add: 'Ekle', link: 'Bağla', ok: 'Tamam',
@@ -108,7 +109,8 @@ const I18N = {
     burialPlace: 'Burial place', occupation: 'Occupation', notes: 'Notes', notesPh: 'Interview notes…', deceased: 'Deceased',
     father: 'Father', mother: 'Mother', spouses: 'Spouse(s)', children: 'Children', siblings: 'Siblings',
     addChild: 'Add child', addSpouse: 'Add spouse', addFather: 'Add father', addMother: 'Add mother', addSibling: 'Add sibling', addPerson: 'Add person',
-    focusHere: 'Focus', del: 'Delete', confirmDelTitle: 'Delete person?',
+    focusHere: 'Focus', setDefault: 'Set as default', defaultSetSnack: 'Default person set to {n}',
+    del: 'Delete', confirmDelTitle: 'Delete person?',
     confirmDelMsg: '"{n}" will be permanently removed from the tree and the file. (Old backups stay in the backups folder.)',
     confirmDelMsgBrowser: '"{n}" will be permanently removed from the tree.',
     cancel: 'Cancel', add: 'Add', link: 'Link', ok: 'OK',
@@ -189,6 +191,7 @@ const W_EDIT_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="
 const W_ADD_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>';
 const W_TREE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/></svg>';
 const W_SHIELD_SVG = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9z"/></svg>';
+const DEFAULT_SVG = '<svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>';
 function applyTheme() {
   document.documentElement.dataset.theme = theme;
   const btn = $('themeBtn');
@@ -337,7 +340,7 @@ function renderTree() {
     const div = document.createElement('div');
     const sexCls = p.sex === 'M' ? 'm' : p.sex === 'F' ? 'f' : 'u';
     const isSpine = p.lineage === 'direct_ancestor';
-    const isRoot = p.lineage === 'root' || p.id === rootId;
+    const isRoot = p.id === rootId;
     div.className = `card ${sexCls}${isSpine ? ' spine' : ''}${isRoot ? ' root' : ''}${c.id === selectedId ? ' sel' : ''}`;
     div.style.left = c.x + 'px';
     div.style.top = c.y + 'px';
@@ -548,6 +551,15 @@ function setFocus(id) {
   renderPanel();
 }
 
+function setDefaultPerson(id) {
+  const p = model?.byId.get(id);
+  if (!p || id === rootId || !setRootId(model, id)) return;
+  rootId = id;
+  markDirty();
+  setFocus(id);
+  snack(t('defaultSetSnack', { n: p.name }));
+}
+
 function fieldRow(key, label, p, ph) {
   return `<div class="field"><label>${esc(label)}</label>` +
     `<input data-f="${key}" value="${esc(p[key] ?? '')}" placeholder="${esc(ph || '')}"></div>`;
@@ -582,7 +594,7 @@ function renderPanel() {
   const ghost = n => `<span class="chip ghost" title="?">${esc(n)}</span>`;
 
   let badge = '';
-  if (p.lineage === 'root' || p.id === rootId) badge = `<span class="badge root">${t('rootBadge')}</span>`;
+  if (p.id === rootId) badge = `<span class="badge root">${t('rootBadge')}</span>`;
   else if (p.lineage === 'direct_ancestor') badge = `<span class="badge anc">${t('ancBadge')}</span>`;
 
   const fatherHtml = p._father ? chip(p._father)
@@ -648,6 +660,7 @@ function renderPanel() {
     </div>
     <div class="panel-actions">
       <button class="btn tonal" id="pFocus">⌖ ${t('focusHere')}</button>
+      ${p.id !== rootId ? `<button class="btn tonal icon-label" id="pMakeDefault">${DEFAULT_SVG}${t('setDefault')}</button>` : ''}
       <button class="btn danger" id="pDelete">${t('del')}</button>
     </div>`;
 
@@ -655,6 +668,7 @@ function renderPanel() {
 
   $('panelClose').onclick = () => { selectedId = null; renderTree(); renderPanel(); };
   $('pFocus').onclick = () => setFocus(p.id);
+  if ($('pMakeDefault')) $('pMakeDefault').onclick = () => setDefaultPerson(p.id);
   $('pDelete').onclick = () => confirmDelete(p.id);
   $('pDeceased').onchange = e => { p.deceased = e.target.checked; touch(p); markDirty(); renderPanel(); renderTree(); };
   $('pIlleg').onchange = e => {
