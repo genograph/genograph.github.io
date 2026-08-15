@@ -1,0 +1,106 @@
+# Publish a new npm package version and create its matching GitHub release.
+#
+# The first publish needs an NPM_TOKEN repository secret. Once the package
+# exists, configure npm Trusted Publishing for this repository and release.yml;
+# the same workflow will then publish through short-lived OIDC credentials.
+name: Publish release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+  workflow_dispatch:
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # npm Trusted Publishing requires npm 11.5.1 or newer.
+      - name: Use npm 11
+        run: npm install --global npm@11
+
+      - name: Run tests
+        run: npm test
+
+      - name: Read release metadata
+        id: package
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          RELEASE_SHA=$(git log -1 --format=%H -- package.json)
+          echo "name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Check npm registry
+        id: registry
+        shell: bash
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          set +e
+          RESULT=$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>&1)
+          STATUS=$?
+          set -e
+
+          if [ "$STATUS" -eq 0 ]; then
+            REPOSITORY=$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" repository.url)
+            case "$REPOSITORY" in
+              *github.com/genograph/genograph.github.io*) ;;
+              *)
+                echo "::error::${PACKAGE_NAME}@${PACKAGE_VERSION} exists but belongs to ${REPOSITORY:-an unknown repository}."
+                exit 1
+                ;;
+            esac
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$RESULT" | grep -q 'E404'; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' "$RESULT"
+            exit "$STATUS"
+          fi
+
+      - name: Publish to npm
+        if: steps.registry.outputs.publish == 'true'
+        run: npm publish --access public --provenance
+        env:
+          # Optional after npm Trusted Publishing is configured.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create tag and GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.package.outputs.version }}
+          RELEASE_SHA: ${{ steps.package.outputs.release_sha }}
+        run: |
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already has a GitHub release."
+          else
+            gh release create "$TAG" \
+              --target "$RELEASE_SHA" \
+              --title "Genograph $VERSION" \
+              --generate-notes
+          fi
