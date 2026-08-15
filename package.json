@@ -1,6 +1,6 @@
 {
   "name": "genograph",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Genograph — Offline, private family-tree browser & editor that runs in your browser. Your data never leaves your machine.",
   "type": "module",
   "bin": {
