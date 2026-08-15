@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - package.json
+      - .github/workflows/release.yml
   workflow_dispatch:
 
 concurrency:
@@ -47,10 +48,8 @@ jobs:
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          RELEASE_SHA=$(git log -1 --format=%H -- package.json)
           echo "name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
           echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Check npm registry
         id: registry
@@ -93,7 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.package.outputs.version }}
-          RELEASE_SHA: ${{ steps.package.outputs.release_sha }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then
