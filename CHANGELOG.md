@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-15
+
 ### Added
 - **Quick-add buttons on the canvas.** Selecting a person now shows small `+`
   buttons right on their card: one above for each still-missing parent (colored
@@ -91,7 +93,7 @@ First public release.
   pan & zoom, dark mode, and an English/Turkish interface toggle.
 - Automatic backups before every save (kept per tree).
 - Bundled example tree: the immediate relatives of Guy de Lusignan.
-- `npx genograph`, global install, Homebrew formula and double-click launchers.
+- `npx genograph`, global install and double-click launchers.
 
 ### Security
 - Server binds to `127.0.0.1` only and rejects non-local `Host`/`Origin` requests
@@ -99,4 +101,6 @@ First public release.
 - Strict path handling for static files and tree storage.
 - Strict Content-Security-Policy; no external resources or network calls.
 
+[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.1.0
 [1.0.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.0.0

@@ -58,20 +58,12 @@ npx genograph
 ```
 
 This downloads and starts the app, then opens it in your browser at
-`http://localhost:3456`. (Before it's published to npm you can run it straight from
-the repo: `npx github:genograph/genograph.github.io`.)
+`http://localhost:3456`.
 
 ### Install globally
 
 ```bash
 npm install -g genograph
-genograph
-```
-
-### Homebrew (macOS / Linux)
-
-```bash
-brew install genograph/tap/genograph
 genograph
 ```
 
