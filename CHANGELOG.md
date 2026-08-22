@@ -12,7 +12,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Restrict the CLI's `--host` option to loopback addresses and reject missing
   option values, preserving the local-only server boundary even with malformed
   or unsafe command-line arguments.
-- Remove the maintainer's personal email address from published package metadata.
 
 ### Added
 - Private vulnerability-reporting guidance, a privacy-aware bug-report form and
