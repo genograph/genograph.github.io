@@ -88,7 +88,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `GENOGRAPH_DATA` / `--data` now pin the folder for a single run and take
   priority over the remembered choice (the in-app picker is disabled while pinned).
 
-## [1.0.0] - 2026-06-28
+## 1.0.0 - 2026-06-28
 
 First public release.
 
@@ -114,4 +114,3 @@ First public release.
 [Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0
 [1.1.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.1.0
-[1.0.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.0.0

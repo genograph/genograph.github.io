@@ -40,7 +40,7 @@
     "type": "git",
     "url": "git+https://github.com/genograph/genograph.github.io.git"
   },
-  "homepage": "https://github.com/genograph/genograph.github.io#readme",
+  "homepage": "https://genograph.github.io/",
   "bugs": {
     "url": "https://github.com/genograph/genograph.github.io/issues"
   }

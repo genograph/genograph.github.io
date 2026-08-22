@@ -1,6 +1,7 @@
 <h1><img src="public/genograph-logo.svg" alt="Genograph logo" width="32" height="32" align="absmiddle"> Genograph</h1>
 
-[![Version 1.2.0](https://img.shields.io/badge/version-1.2.0-1595d3)](https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0)
+[![npm](https://img.shields.io/npm/v/genograph)](https://www.npmjs.com/package/genograph)
+[![CI](https://github.com/genograph/genograph.github.io/actions/workflows/ci.yml/badge.svg)](https://github.com/genograph/genograph.github.io/actions/workflows/ci.yml)
 
 **An offline, private family-tree browser & editor that runs in your own browser.**
 Create, load and manage as many family trees as you like — record people, dates,
@@ -20,8 +21,9 @@ places, relationships and interview notes. No account, no cloud, no tracking.
 
 - **Private by design.** A tiny local server serves the app to `localhost` only and
   reads/writes JSON files on your disk. Nothing is ever uploaded. A strict
-  Content-Security-Policy blocks the page from making any network request.
-- **Offline.** No internet required — ever. No external fonts, scripts or CDNs.
+  Content Security Policy prevents outbound requests to third-party services.
+- **Offline.** The local version works completely offline; the hosted version continues
+  working after it has loaded. No external fonts, scripts or CDNs.
 - **Zero runtime dependencies.** Just Node.js and plain HTML/CSS/JS. Easy to audit.
 - **Yours forever.** Trees are human-readable JSON you fully own; export any time.
 - **Built for real interviews.** Per-person notes, approximate dates, uncertain
@@ -40,12 +42,13 @@ your trees are saved **on your own machine**:
   menu and the app reads and writes real `.json` files in the folder you pick — just
   like the local app, including automatic `.backups/` and a `.trash/` folder. Point it
   at a synced folder (Dropbox, iCloud Drive, …) and your trees follow you between machines.
+  Genograph itself never uploads data; a synced folder may be transmitted by the storage
+  provider you choose.
 - **Other browsers (Safari, Firefox), or before you pick a folder:** trees are kept in
   your browser's own local database. They persist across reloads on that browser; use
   **Export JSON** to back them up or carry them elsewhere.
 
-After it loads, the hosted app makes **no network requests** (a strict
-Content-Security-Policy allows same-origin only), so you can even go offline and keep working.
+After the hosted app has loaded, you can go offline and keep working.
 
 For real files and automatic backups in **every** browser, install the local app below.
 
