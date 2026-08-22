@@ -23,16 +23,25 @@ const SEED_FILE = path.join(ROOT, 'examples', 'lusignan.json');
 const DEFAULTS = { port: 3456, host: '127.0.0.1', open: true };
 
 const DEFAULT_DATA_DIR = path.join(os.homedir(), '.genograph', 'trees');
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
+function optionValue(argv, index, option) {
+  const value = argv[index + 1];
+  if (value === undefined || value.startsWith('-')) {
+    console.error(`Missing value for ${option}.\nTry --help.`);
+    process.exit(2);
+  }
+  return value;
+}
 
 function parseArgs(argv) {
   const opts = { ...DEFAULTS, data: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    const next = () => argv[++i];
     switch (a) {
-      case '-p': case '--port': opts.port = parseInt(next(), 10); break;
-      case '-d': case '--data': opts.data = next(); break;
-      case '--host': opts.host = next(); break;
+      case '-p': case '--port': opts.port = parseInt(optionValue(argv, i++, a), 10); break;
+      case '-d': case '--data': opts.data = optionValue(argv, i++, a); break;
+      case '--host': opts.host = optionValue(argv, i++, a); break;
       case '--no-open': opts.open = false; break;
       case '-h': case '--help': opts.help = true; break;
       case '-v': case '--version': opts.version = true; break;
@@ -45,6 +54,10 @@ function parseArgs(argv) {
   }
   if (!Number.isInteger(opts.port) || opts.port < 0 || opts.port > 65535) {
     console.error('Invalid --port.'); process.exit(2);
+  }
+  if (!LOOPBACK_HOSTS.has(opts.host)) {
+    console.error('Invalid --host. Genograph only accepts loopback hosts: 127.0.0.1, localhost, or ::1.');
+    process.exit(2);
   }
   return opts;
 }
@@ -64,7 +77,7 @@ Usage: genograph [options]
 Options:
   -p, --port <n>     Port to listen on            (default ${DEFAULTS.port})
   -d, --data <dir>   Folder to store your trees   (default ~/.genograph/trees)
-      --host <addr>  Address to bind              (default ${DEFAULTS.host})
+      --host <addr>  Loopback address to bind     (default ${DEFAULTS.host})
       --no-open      Don't open the browser automatically
   -h, --help         Show this help
   -v, --version      Show version
@@ -158,7 +171,8 @@ async function main() {
     process.exit(1);
   }
 
-  const url = `http://${opts.host === '0.0.0.0' ? 'localhost' : opts.host}:${actualPort}`;
+  const displayHost = opts.host === '::1' ? '[::1]' : opts.host;
+  const url = `http://${displayHost}:${actualPort}`;
   const v = await version();
   console.log('');
   console.log('  ┌─────────────────────────────────────────────┐');

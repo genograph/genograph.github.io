@@ -184,6 +184,10 @@ unambiguous); human-readable name fields are written alongside for portability.
 Dates support an *approximate* flag (`birth_date_uncertain`, …). See
 [`examples/lusignan.json`](examples/lusignan.json) for a complete example.
 
+Genograph currently imports and exports its documented JSON format. GEDCOM
+import/export, source citations, media attachments and printable tree export are
+not yet supported.
+
 ## Development
 
 ```bash
@@ -203,6 +207,10 @@ The core logic is split into small, dependency-free, unit-tested modules:
 - `src/server.js` — the local HTTP server and JSON API
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+For security vulnerabilities, follow the private reporting instructions in
+[SECURITY.md](SECURITY.md). Never attach a real family tree or information about
+living people to a public issue.
 
 ### Hosting the browser app
 

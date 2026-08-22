@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-22
+
+### Security
+- Restrict the CLI's `--host` option to loopback addresses and reject missing
+  option values, preserving the local-only server boundary even with malformed
+  or unsafe command-line arguments.
+- Remove the maintainer's personal email address from published package metadata.
+
+### Added
+- Private vulnerability-reporting guidance, a privacy-aware bug-report form and
+  a pull-request checklist.
+- An explicit README scope note for unsupported genealogy interchange and
+  archival features.
+
 ## [1.2.0] - 2026-08-16
 
 ### Added
@@ -111,6 +125,7 @@ First public release.
 - Strict path handling for static files and tree storage.
 - Strict Content-Security-Policy; no external resources or network calls.
 
-[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.1
 [1.2.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0
 [1.1.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.1.0

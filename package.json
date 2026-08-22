@@ -1,6 +1,6 @@
 {
   "name": "genograph",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Genograph — Offline, private family-tree browser & editor that runs in your browser. Your data never leaves your machine.",
   "type": "module",
   "bin": {
@@ -19,6 +19,9 @@
     "examples",
     "docs",
     "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "engines": {
@@ -34,7 +37,7 @@
     "local-first",
     "privacy"
   ],
-  "author": "Mete Morris <morrismete@gmail.com>",
+  "author": "Mete Morris",
   "license": "MIT",
   "repository": {
     "type": "git",
