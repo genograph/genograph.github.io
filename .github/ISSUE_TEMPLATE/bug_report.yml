@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem without sharing real family data
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Genograph. **Do not attach a real family tree or personal information about living people.** Use a small tree with invented names and details.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Select …
+        3. See …
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: How are you running Genograph?
+      options:
+        - Hosted app (genograph.github.io)
+        - npx or global npm install
+        - From source
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser and version, plus Node.js version for the local app.
+      placeholder: macOS 15, Safari 19 / Node.js 22
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Anonymized sample (optional)
+      description: Paste only the smallest invented JSON needed to reproduce the problem.
+      render: json
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed real names and personal information from this report.
+          required: true
