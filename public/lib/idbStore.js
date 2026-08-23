@@ -12,7 +12,7 @@
  * ============================================================ */
 'use strict';
 
-import { isValidTree, isValidId, uniqueId, treeMeta, emptyTree, withName } from './treeStore.js';
+import { isValidTree, validateTree, isValidId, uniqueId, treeMeta, emptyTree, withName } from './treeStore.js';
 
 const DB_NAME = 'genograph';
 const DB_VERSION = 1;
@@ -105,14 +105,14 @@ export function createIdbStore() {
     async read(id) {
       const raw = await get1(TREES, id);
       if (raw === undefined) throw Object.assign(new Error('Tree not found'), { code: 'ENOENT' });
-      return raw;
+      try { return validateTree(raw); }
+      catch (e) { throw Object.assign(new Error(e.message), { code: 'EBADTREE' }); }
     },
 
     async write(id, data) {
       if (!isValidId(id)) throw Object.assign(new Error('Invalid tree id'), { code: 'EBADID' });
-      if (!isValidTree(data)) {
-        throw Object.assign(new Error('A tree must be an object with a "people" array.'), { code: 'EBADTREE' });
-      }
+      try { validateTree(data); }
+      catch (e) { throw Object.assign(new Error(e.message), { code: 'EBADTREE' }); }
       await put1(TREES, id, data);
       return { id, people: data.people.length };
     },
@@ -140,7 +140,8 @@ export function createIdbStore() {
     },
 
     async importTree(name, data) {
-      if (!isValidTree(data)) throw Object.assign(new Error('Not a valid tree file.'), { code: 'EBADTREE' });
+      try { validateTree(data); }
+      catch (e) { throw Object.assign(new Error(e.message), { code: 'EBADTREE' }); }
       const display = String(name ?? '').trim() || (data.summary && data.summary.name) || 'Imported tree';
       const id = uniqueId(new Set(await treeKeys()), display);
       await put1(TREES, id, withName(data, display));

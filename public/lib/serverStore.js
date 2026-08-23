@@ -8,9 +8,30 @@
  * ============================================================ */
 'use strict';
 
+let tokenPromise = null;
+
+async function requestToken() {
+  tokenPromise ||= fetch('/api/session').then(async res => {
+    if (!res.ok) throw new Error('Could not establish a local app session.');
+    const body = await res.json();
+    if (!body.requestToken) throw new Error('Local app session did not provide a request token.');
+    return body.requestToken;
+  }).catch(err => { tokenPromise = null; throw err; });
+  return tokenPromise;
+}
+
 /** Fetch the JSON API, throwing a useful Error on any non-2xx response. */
-async function api(path, opts) {
-  const res = await fetch('/api/' + path, opts);
+async function api(path, opts = {}, retry = true) {
+  const request = { ...opts, headers: { ...(opts.headers || {}) } };
+  const mutating = request.method && !['GET', 'HEAD'].includes(request.method);
+  if (mutating) request.headers['X-Genograph-Token'] = await requestToken();
+  let res = await fetch('/api/' + path, request);
+  // A page can outlive a restarted local server. Refresh its per-process token once.
+  if (mutating && retry && res.status === 403) {
+    tokenPromise = null;
+    request.headers['X-Genograph-Token'] = await requestToken();
+    res = await fetch('/api/' + path, request);
+  }
   let body = null;
   try { body = await res.json(); } catch { /* empty body */ }
   if (!res.ok) throw new Error((body && body.error) || ('HTTP ' + res.status));

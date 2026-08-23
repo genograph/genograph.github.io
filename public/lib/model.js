@@ -109,15 +109,146 @@ export function siblingIds(model, p) {
 
 /* ---------------- validation ---------------- */
 
-/** True when data looks like a tree document (an object with a people array). */
-export function isValidTree(data) {
-  return !!data && typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.people);
+export const TREE_LIMITS = Object.freeze({
+  maxPeople: 10_000,
+  maxRelationshipsPerPerson: 5_000,
+  maxDepth: 20,
+  maxNodes: 250_000,
+  maxCharacters: 25 * 1024 * 1024,
+  maxIdLength: 256
+});
+
+const PLAIN = value => !!value && typeof value === 'object' && !Array.isArray(value) &&
+  (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+const SCALAR_REF = value => typeof value === 'string' ||
+  (typeof value === 'number' && Number.isFinite(value));
+const PERSON_STRING_FIELDS = [
+  'name', 'aliases', 'maiden_name', 'sex', 'lineage', 'birth_place', 'birth_country',
+  'death_place', 'death_country', 'death_cause', 'death_cause_detail', 'burial_place',
+  'occupation', 'updated_at'
+];
+const PERSON_BOOLEAN_FIELDS = [
+  'deceased', 'birth_date_uncertain', 'birth_place_uncertain', 'death_date_uncertain',
+  'death_place_uncertain', 'had_illegitimate_children'
+];
+
+function invalid(message) {
+  throw new Error(`Not a valid tree file: ${message}`);
 }
 
-/** Throwing variant used at trust boundaries (import / API). */
+function addCharacters(budget, count) {
+  budget.characters += count;
+  if (budget.characters > TREE_LIMITS.maxCharacters) invalid('the document contains too much text.');
+}
+
+/** Bound arbitrary preserved metadata as well as the fields the app understands. */
+function inspectJson(value, path, depth, budget, seen) {
+  budget.nodes++;
+  if (budget.nodes > TREE_LIMITS.maxNodes) invalid('the document contains too many values.');
+  if (depth > TREE_LIMITS.maxDepth) invalid(`${path} is nested too deeply.`);
+  if (value == null || typeof value === 'boolean') return;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) invalid(`${path} contains a non-finite number.`);
+    return;
+  }
+  if (typeof value === 'string') {
+    addCharacters(budget, value.length);
+    return;
+  }
+  if (typeof value !== 'object') invalid(`${path} contains a value JSON cannot represent.`);
+  if (seen.has(value)) invalid(`${path} contains a circular reference.`);
+  seen.add(value);
+  if (Array.isArray(value)) {
+    if (value.length > TREE_LIMITS.maxNodes) invalid(`${path} contains too many items.`);
+    value.forEach((item, index) => inspectJson(item, `${path}[${index}]`, depth + 1, budget, seen));
+  } else {
+    if (!PLAIN(value)) invalid(`${path} must be a plain object.`);
+    for (const [key, item] of Object.entries(value)) {
+      addCharacters(budget, key.length);
+      inspectJson(item, `${path}.${key}`, depth + 1, budget, seen);
+    }
+  }
+  seen.delete(value);
+}
+
+function validateReference(value, path) {
+  if (!SCALAR_REF(value)) invalid(`${path} must be a string or number.`);
+  if (String(value).length > TREE_LIMITS.maxIdLength) invalid(`${path} is too long.`);
+}
+
+/** Throwing validator used at every import, storage and API trust boundary. */
 export function validateTree(data) {
-  if (!isValidTree(data)) throw new Error('Not a valid tree file: expected an object with a "people" array.');
+  if (!PLAIN(data) || !Array.isArray(data.people)) {
+    invalid('expected an object with a "people" array.');
+  }
+  inspectJson(data, 'tree', 0, { nodes: 0, characters: 0 }, new WeakSet());
+  if (data.people.length > TREE_LIMITS.maxPeople) {
+    invalid(`a tree may contain at most ${TREE_LIMITS.maxPeople} people.`);
+  }
+  if (data.summary !== undefined) {
+    if (!PLAIN(data.summary)) invalid('summary must be an object.');
+    if (data.summary.name !== undefined && typeof data.summary.name !== 'string') {
+      invalid('summary.name must be a string.');
+    }
+    if (data.summary.root !== undefined) validateReference(data.summary.root, 'summary.root');
+  }
+
+  const ids = new Set();
+  data.people.forEach((person, index) => {
+    const base = `people[${index}]`;
+    if (!PLAIN(person)) invalid(`${base} must be an object.`);
+    if (person.id !== undefined && person.id !== null && person.id !== '') {
+      validateReference(person.id, `${base}.id`);
+      const id = String(person.id);
+      if (ids.has(id)) invalid(`${base}.id duplicates another person id.`);
+      ids.add(id);
+    }
+    for (const field of PERSON_STRING_FIELDS) {
+      if (person[field] !== undefined && typeof person[field] !== 'string') {
+        invalid(`${base}.${field} must be a string.`);
+      }
+    }
+    for (const field of ['birth_date', 'death_date']) {
+      if (person[field] !== undefined && !SCALAR_REF(person[field])) {
+        invalid(`${base}.${field} must be a string or number.`);
+      }
+    }
+    for (const field of PERSON_BOOLEAN_FIELDS) {
+      if (person[field] !== undefined && typeof person[field] !== 'boolean') {
+        invalid(`${base}.${field} must be a boolean.`);
+      }
+    }
+    for (const field of ['father_id', 'mother_id']) {
+      if (person[field] !== undefined && person[field] !== null) validateReference(person[field], `${base}.${field}`);
+    }
+    for (const field of ['spouse_ids', 'children_ids']) {
+      const refs = person[field];
+      if (refs === undefined) continue;
+      if (!Array.isArray(refs) || refs.length > TREE_LIMITS.maxRelationshipsPerPerson) {
+        invalid(`${base}.${field} must be a bounded array.`);
+      }
+      refs.forEach((ref, refIndex) => validateReference(ref, `${base}.${field}[${refIndex}]`));
+    }
+    for (const field of ['father', 'mother', 'spouse', 'children']) {
+      const refs = person[field];
+      if (refs === undefined || refs === null) continue;
+      const values = Array.isArray(refs) ? refs : [refs];
+      if (values.length > TREE_LIMITS.maxRelationshipsPerPerson || values.some(ref => typeof ref !== 'string')) {
+        invalid(`${base}.${field} must contain relationship names as strings.`);
+      }
+    }
+    if (person.notes !== undefined && typeof person.notes !== 'string' &&
+        !(Array.isArray(person.notes) && person.notes.length <= TREE_LIMITS.maxRelationshipsPerPerson &&
+          person.notes.every(note => typeof note === 'string'))) {
+      invalid(`${base}.notes must be a string or an array of strings.`);
+    }
+  });
   return data;
+}
+
+/** Boolean variant for listings and lightweight capability checks. */
+export function isValidTree(data) {
+  try { validateTree(data); return true; } catch { return false; }
 }
 
 /* ---------------- build (migrate) ---------------- */

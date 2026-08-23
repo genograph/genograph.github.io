@@ -15,6 +15,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { TreeStore } from './store.js';
 
@@ -47,20 +48,28 @@ const CSP = [
 ].join('; ');
 
 // Hostnames that are unambiguously this machine.
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
-function hostnameOf(value) {
+function localUrl(value, fallbackScheme = 'http') {
   if (!value) return null;
-  let h = String(value).trim();
-  // strip scheme if present (Origin/Referer), then path
-  h = h.replace(/^[a-z]+:\/\//i, '').split('/')[0];
-  // [::1]:port  |  host:port  |  host
-  if (h.startsWith('[')) return h.slice(0, h.indexOf(']') + 1) || h;
-  const colon = h.lastIndexOf(':');
-  return colon > -1 ? h.slice(0, colon) : h;
+  try {
+    const raw = String(value).trim();
+    const authority = raw === '::1' ? '[::1]' : raw;
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(authority) ? authority : `${fallbackScheme}://${authority}`);
+    if (url.username || url.password || !LOCAL_HOSTS.has(url.hostname.toLowerCase())) return null;
+    return url;
+  } catch { return null; }
 }
 
-const isLocalHost = value => LOCAL_HOSTS.has(hostnameOf(value));
+const isLocalHost = value => !!localUrl(value);
+const hostnameOf = value => localUrl(value)?.hostname || null;
+
+/** Browser origins must match this exact server, including scheme and port. */
+function isSameRequestOrigin(value, host) {
+  const supplied = localUrl(value);
+  const expected = localUrl(host);
+  return !!supplied && !!expected && supplied.origin === expected.origin;
+}
 
 function securityHeaders(type) {
   return {
@@ -81,18 +90,33 @@ const sendJson = (res, code, obj) => send(res, code, JSON.stringify(obj), MIME['
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    let size = 0;
+    let size = 0, settled = false;
+    const declared = Number(req.headers['content-length']);
+    if (Number.isFinite(declared) && declared > MAX_BODY) {
+      settled = true;
+      reject(Object.assign(new Error('Request too large'), { code: 'E2BIG' }));
+    }
     req.on('data', c => {
+      if (settled) return;
       size += c.length;
-      if (size > MAX_BODY) { reject(Object.assign(new Error('Request too large'), { code: 'E2BIG' })); req.destroy(); return; }
+      if (size > MAX_BODY) {
+        settled = true;
+        chunks.length = 0;
+        reject(Object.assign(new Error('Request too large'), { code: 'E2BIG' }));
+        return;
+      }
       chunks.push(c);
     });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
+    req.on('end', () => { if (!settled) resolve(Buffer.concat(chunks)); });
+    req.on('error', err => { if (!settled) reject(err); });
   });
 }
 
 async function readJsonBody(req) {
+  const mediaType = String(req.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
+  if (mediaType !== 'application/json') {
+    throw Object.assign(new Error('Content-Type must be application/json.'), { code: 'EBADTYPE' });
+  }
   const buf = await readBody(req);
   if (!buf.length) return undefined;
   try { return JSON.parse(buf.toString('utf8')); }
@@ -106,6 +130,7 @@ function statusForError(err) {
     case 'EBADNAME':
     case 'EBADDIR':
     case 'EBADJSON': return 400;
+    case 'EBADTYPE': return 415;
     case 'ELOCKED': return 409;
     case 'E2BIG': return 413;
     case 'ENOENT': return 404;
@@ -141,7 +166,8 @@ export function createServer({ store, publicDir = DEFAULT_PUBLIC, settings = {} 
     store,
     defaultDir: path.resolve(settings.defaultDir || store.dir),
     locked: !!settings.locked,
-    persist: settings.persist || null
+    persist: settings.persist || null,
+    requestToken: randomUUID()
   };
 
   return http.createServer(async (req, res) => {
@@ -154,8 +180,12 @@ export function createServer({ store, publicDir = DEFAULT_PUBLIC, settings = {} 
       if (mutating) {
         const origin = req.headers.origin;
         const referer = req.headers.referer;
-        if ((origin && !isLocalHost(origin)) || (referer && !isLocalHost(referer))) {
+        if ((origin && !isSameRequestOrigin(origin, req.headers.host)) ||
+            (referer && !isSameRequestOrigin(referer, req.headers.host))) {
           return send(res, 403, 'Forbidden: cross-origin request.');
+        }
+        if (req.headers['x-genograph-token'] !== state.requestToken) {
+          return send(res, 403, 'Forbidden: missing or invalid request token.');
         }
       }
 
@@ -175,6 +205,10 @@ export function createServer({ store, publicDir = DEFAULT_PUBLIC, settings = {} 
 /* ---------------- API ---------------- */
 async function handleApi(req, res, seg, state) {
   // seg: ['settings'] | ['trees'] | ['trees', id] | ['trees', id, 'duplicate']
+  if (seg[0] === 'session' && seg.length === 1) {
+    if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed' });
+    return sendJson(res, 200, { requestToken: state.requestToken });
+  }
   if (seg[0] === 'settings' && seg.length === 1) return handleSettings(req, res, state);
   if (seg[0] !== 'trees') return sendJson(res, 404, { error: 'Unknown endpoint' });
 

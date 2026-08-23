@@ -84,13 +84,15 @@ export function layout(model, focusId, mode) {
   });
 
   // descendant block: person (+spouses, +children recursively in full mode)
-  function descNode(pid, depth) {
+  function descNode(pid, depth, trail = new Set()) {
     const p = by(pid);
-    const withFam = full && !!p && depth < MAXDEPTH;
+    const withFam = full && !!p && depth < MAXDEPTH && !trail.has(pid);
+    const nextTrail = new Set(trail);
+    nextTrail.add(pid);
     const spouses = withFam ? p._spouses.filter(s => !spine.has(s) && by(s)) : [];
-    const kids = withFam ? birthSortIds(model, p._children.filter(c => by(c))) : [];
+    const kids = withFam ? birthSortIds(model, p._children.filter(c => by(c) && !nextTrail.has(c))) : [];
     if (!spouses.length && !kids.length) return cardBlock(pid);
-    const kidB = kids.map(k => descNode(k, depth + 1));
+    const kidB = kids.map(k => descNode(k, depth + 1, nextTrail));
     const cont = new Map();
     const kidDx = [];
     for (const b of kidB) {

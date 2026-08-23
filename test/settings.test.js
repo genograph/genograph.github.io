@@ -13,7 +13,7 @@ import { TreeStore } from '../src/store.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, '..', 'public');
 
-let dir, altDir, configDir, server, port, persisted;
+let dir, altDir, configDir, server, port, persisted, requestToken;
 
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ft-set-'));
@@ -28,6 +28,7 @@ before(async () => {
   });
   await new Promise(res => server.listen(0, '127.0.0.1', res));
   port = server.address().port;
+  requestToken = await tokenFor(port);
 });
 
 after(async () => {
@@ -39,6 +40,7 @@ function req(method, p, { body } = {}) {
   return new Promise((resolve, reject) => {
     const data = body === undefined ? null : JSON.stringify(body);
     const h = { Host: `127.0.0.1:${port}` };
+    if (!['GET', 'HEAD'].includes(method)) h['X-Genograph-Token'] = requestToken;
     if (data != null) h['Content-Type'] = 'application/json';
     const r = http.request({ host: '127.0.0.1', port, path: p, method, headers: h }, res => {
       const chunks = [];
@@ -51,6 +53,19 @@ function req(method, p, { body } = {}) {
     });
     r.on('error', reject);
     if (data != null) r.write(data);
+    r.end();
+  });
+}
+
+function tokenFor(serverPort) {
+  return new Promise((resolve, reject) => {
+    const r = http.request({ host: '127.0.0.1', port: serverPort, path: '/api/session', method: 'GET',
+      headers: { Host: `127.0.0.1:${serverPort}` } }, res => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')).requestToken));
+    });
+    r.on('error', reject);
     r.end();
   });
 }
@@ -86,12 +101,13 @@ test('PUT /api/settings with move — carries existing trees along', async () =>
   });
   await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const p2 = srv.address().port;
+  const p2Token = await tokenFor(p2);
   const target = await fs.mkdtemp(path.join(os.tmpdir(), 'ft-set-dst-'));
 
   const put = await new Promise((resolve, reject) => {
     const body = JSON.stringify({ dataDir: target, move: true });
     const r = http.request({ host: '127.0.0.1', port: p2, path: '/api/settings', method: 'PUT',
-      headers: { Host: `127.0.0.1:${p2}`, 'Content-Type': 'application/json' } }, res => {
+      headers: { Host: `127.0.0.1:${p2}`, 'Content-Type': 'application/json', 'X-Genograph-Token': p2Token } }, res => {
       const c = []; res.on('data', x => c.push(x));
       res.on('end', () => resolve(JSON.parse(Buffer.concat(c).toString('utf8'))));
     });
@@ -114,10 +130,11 @@ test('PUT /api/settings — rejected (409) when the folder is locked', async () 
   });
   await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const p2 = srv.address().port;
+  const p2Token = await tokenFor(p2);
   const res = await new Promise((resolve, reject) => {
     const body = JSON.stringify({ dataDir: altDir });
     const r = http.request({ host: '127.0.0.1', port: p2, path: '/api/settings', method: 'PUT',
-      headers: { Host: `127.0.0.1:${p2}`, 'Content-Type': 'application/json' } }, res => {
+      headers: { Host: `127.0.0.1:${p2}`, 'Content-Type': 'application/json', 'X-Genograph-Token': p2Token } }, res => {
       const c = []; res.on('data', x => c.push(x));
       res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(Buffer.concat(c).toString('utf8')) }));
     });

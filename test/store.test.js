@@ -131,7 +131,7 @@ test('moveTo — relocates tree files, avoids clobbering, leaves source empty', 
     JSON.stringify({ people: [{ id: 'p1', name: 'pre-existing' }] }));
 
   const moved = await store.moveTo(destDir);
-  assert.deepEqual(moved.sort(), ['a', 'b']);
+  assert.deepEqual(moved.sort(), ['a-2', 'b'], 'reports the actual destination ids');
   assert.equal((await store.list()).length, 0, 'source folder is emptied');
 
   const destFiles = (await fs.readdir(destDir)).filter(f => f.endsWith('.json')).sort();
