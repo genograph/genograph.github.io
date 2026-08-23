@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildModel, rootIdOf } from '../public/lib/model.js';
-import { layout, CARD_W, CARD_H } from '../public/lib/layout.js';
+import { layout, CARD_W, CARD_H, PITCH } from '../public/lib/layout.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const example = () => buildModel(JSON.parse(readFileSync(path.join(__dirname, '..', 'examples', 'lusignan.json'), 'utf8')));
@@ -58,4 +58,55 @@ test('layout — empty / unknown focus yields an empty, finite result', () => {
   const { cards, bbox } = layout(m, null, 'full');
   assert.equal(cards.length, 0);
   for (const v of [bbox.minX, bbox.minY, bbox.maxX, bbox.maxY]) assert.ok(Number.isFinite(v));
+});
+
+test('layout — ancestry cycles terminate without duplicating cards', () => {
+  const model = buildModel({
+    people: [
+      { id: 'a', name: 'A', father_id: 'b', mother_id: 'b' },
+      { id: 'b', name: 'B', father_id: 'a', mother_id: 'a' }
+    ]
+  });
+  const { cards, bbox } = layout(model, 'a', 'ancestors');
+  assert.deepEqual(cards.map(card => card.id).sort(), ['a', 'b']);
+  for (const value of Object.values(bbox)) assert.ok(Number.isFinite(value));
+});
+
+test('layout — converging adversarial pedigrees stop at a global work budget', () => {
+  const people = [{ id: 'root', name: 'Root', father_id: 'a0', mother_id: 'b0' }];
+  for (let i = 0; i < 16; i++) {
+    const nextA = i === 15 ? null : `a${i + 1}`;
+    const nextB = i === 15 ? null : `b${i + 1}`;
+    people.push({ id: `a${i}`, name: `A${i}`, ...(nextA && { father_id: nextA, mother_id: nextB }) });
+    people.push({ id: `b${i}`, name: `B${i}`, ...(nextA && { father_id: nextA, mother_id: nextB }) });
+  }
+  const model = buildModel({ people });
+  assert.throws(() => layout(model, 'root', 'ancestors'), /safe complexity limit/);
+});
+
+test('layout — children from different spouses use distinct union drops', () => {
+  const model = buildModel({
+    people: [
+      { id: 'p', name: 'Parent', spouse_ids: ['s1', 's2'], children_ids: ['c1', 'c2'] },
+      { id: 's1', name: 'Spouse 1', spouse_ids: ['p'], children_ids: ['c1'] },
+      { id: 's2', name: 'Spouse 2', spouse_ids: ['p'], children_ids: ['c2'] },
+      { id: 'c1', name: 'Child 1', father_id: 'p', mother_id: 's1' },
+      { id: 'c2', name: 'Child 2', father_id: 'p', mother_id: 's2' }
+    ]
+  });
+  const { cards, segs } = layout(model, 'p', 'full');
+  assert.equal(new Set(cards.map(card => card.id)).size, 5);
+  const center = id => {
+    const card = cards.find(candidate => candidate.id === id);
+    return card.x + CARD_W / 2;
+  };
+  const expectedUnionDrops = [(center('p') + center('s1')) / 2, (center('p') + center('s2')) / 2];
+  for (const drop of expectedUnionDrops) {
+    assert.ok(segs.some(([x1, , x2, y2]) => x1 === drop && x2 === drop && y2 === PITCH - 26),
+      `union at ${drop} has its own child drop`);
+  }
+  const childTops = new Map(cards.filter(card => card.id.startsWith('c')).map(card => [card.id, card.x + CARD_W / 2]));
+  for (const center of childTops.values()) {
+    assert.ok(segs.some(([x1, , x2, y2]) => x1 === center && x2 === center && y2 === PITCH));
+  }
 });

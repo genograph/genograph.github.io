@@ -6,6 +6,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-08-23
+
+### Added
+- Add real-browser smoke coverage for the hosted IndexedDB experience and the
+  local server's create, edit, reload, export and import lifecycle.
+- Make family-tree cards keyboard operable and expose labels, selected states,
+  live save feedback and reduced-motion behavior to assistive technology.
+
+### Fixed
+- Bound adversarial tree-layout work, terminate ancestry cycles safely and
+  connect children to the correct parental union in multi-spouse families.
+- Preserve valid and dangling relationship ids independently instead of losing
+  valid links when one imported reference cannot be resolved.
+- Centralize parent and spouse mutations so reciprocal links stay consistent,
+  replaced parents lose stale child links and cycle-creating edits are rejected.
+- Serialize autosaves by edit generation so an older completion cannot mark a
+  newer edit as saved, and stop tree or storage transitions after a failed save.
+
 ## [1.2.2] - 2026-08-23
 
 ### Security
@@ -146,7 +164,8 @@ First public release.
 - Strict path handling for static files and tree storage.
 - Strict Content-Security-Policy; no external resources or network calls.
 
-[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.3
 [1.2.2]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.2
 [1.2.1]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.1
 [1.2.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0

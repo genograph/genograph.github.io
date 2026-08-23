@@ -11,10 +11,17 @@ not be accepted.
 git clone https://github.com/genograph/genograph.github.io.git
 cd genograph.github.io
 npm start     # runs at http://localhost:3456
-npm test      # runs the test suite
+npm test      # runs the fast Node test suite
 ```
 
-You need Node.js 18+. There is no build step.
+You need Node.js 18+. There is no build step. To run the real-browser smoke
+suite as well, use Node.js 20+:
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
 
 ## Project layout
 
@@ -27,8 +34,11 @@ public/style.css      Styles (light + dark)
 public/app.js         Browser UI (ES module)
 public/lib/model.js   Pure data logic (parse, migrate, normalize, serialize)
 public/lib/layout.js  Pure tree layout algorithm
+public/lib/relationships.js  Reciprocal relationship commands and cycle checks
+public/lib/autosave.js  Edit-generation save coordinator
 examples/lusignan.json  Bundled example tree
 test/                 node:test suites
+e2e/                  Playwright browser smoke tests
 ```
 
 The modules in `public/lib/` are **pure** (no DOM, no globals) so they can be
@@ -38,7 +48,8 @@ data/algorithm code in `lib/` with tests, and keep DOM code in `app.js`.
 ## Guidelines
 
 - **No runtime dependencies.** Dev-only tooling is fine to discuss in an issue first.
-- **Add or update tests** for any logic change (`npm test` must pass).
+- **Add or update tests** for any logic change (`npm test` must pass). Browser
+  behavior changes should also keep `npm run test:e2e` green.
 - **Keep it secure.** The server is local-only; preserve the loopback binding,
   `Host`/`Origin` checks, path-safety guards, and CSP.
 - **Match the existing style** — 2-space indent, semicolons, small functions,

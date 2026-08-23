@@ -195,7 +195,8 @@ not yet supported.
 
 ```bash
 npm start          # run the app from source
-npm test           # run the test suite (Node's built-in test runner)
+npm test           # run the fast suite (Node's built-in test runner)
+npm run test:e2e   # run browser lifecycle tests (after installing Playwright)
 npm run test:watch # re-run tests on change
 ```
 
