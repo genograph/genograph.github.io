@@ -7,7 +7,7 @@
  * ============================================================ */
 
 import {
-  buildModel, serialize, rootIdOf, setRootId, isValidTree,
+  buildModel, serialize, rootIdOf, setRootId, validateTree, TREE_LIMITS,
   birthSortIds, siblingIds, norm, searchText, yearOf, CAUSES, DATE_RE
 } from './lib/model.js';
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
@@ -1154,8 +1154,9 @@ function exportCurrent() {
 async function importTreeFile(file) {
   if (!file) return;
   try {
+    if (file.size > TREE_LIMITS.maxCharacters) throw new Error('File is larger than 25 MB.');
     const data = JSON.parse(await file.text());
-    if (!isValidTree(data)) { snack(t('importInvalid')); return; }
+    validateTree(data);
     const name = (data.summary && data.summary.name) || file.name.replace(/\.json$/i, '');
     const out = await store.importTree(name, data);
     await refreshTrees();

@@ -240,9 +240,10 @@ test('serialize — repairs a stale root and omits it for an empty tree', () => 
   const empty = buildModel({ summary: { root: 'missing' }, people: [] });
   assert.ok(!('root' in serialize(empty).summary));
 
-  const malformed = buildModel({ summary: 'invalid', people: [{ id: 'x', name: 'X' }] });
-  assert.equal(setRootId(malformed, 'x'), true);
-  assert.equal(serialize(malformed).summary.root, 'x');
+  assert.throws(
+    () => buildModel({ summary: 'invalid', people: [{ id: 'x', name: 'X' }] }),
+    /summary must be an object/
+  );
 });
 
 test('rootIdOf — legacy example and first-person fallback remain supported', () => {
@@ -256,6 +257,10 @@ test('isValidTree / validateTree', () => {
   assert.equal(isValidTree([]), false);
   assert.equal(isValidTree(null), false);
   assert.throws(() => validateTree({ nope: 1 }), /people/);
+  assert.throws(() => validateTree({ people: [null] }), /must be an object/);
+  assert.throws(() => validateTree({ summary: { name: 42 }, people: [] }), /summary\.name/);
+  assert.throws(() => validateTree({ people: [{ id: 'a' }, { id: 'a' }] }), /duplicates/);
+  assert.throws(() => validateTree({ people: [{ id: 'a', children_ids: [null] }] }), /string or number/);
 });
 
 test('helpers — yearOf, norm, searchText', () => {

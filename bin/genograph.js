@@ -144,7 +144,7 @@ async function main() {
   if (opts.version) { console.log(await version()); return; }
 
   const { dir: dataDir, locked } = await resolveDataDir(opts);
-  const store = await new TreeStore(dataDir).init();
+  const store = await new TreeStore(dataDir).init({ secureExisting: path.resolve(dataDir) === path.resolve(DEFAULT_DATA_DIR) });
   const seeded = await store.seedIfEmpty(SEED_FILE);
 
   const server = createServer({

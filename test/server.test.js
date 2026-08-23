@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, '..', 'public');
 const SEED = path.join(__dirname, '..', 'examples', 'lusignan.json');
 
-let dir, server, port;
+let dir, server, port, requestToken;
 
 before(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ft-server-'));
@@ -23,6 +23,7 @@ before(async () => {
   server = createServer({ store, publicDir: PUBLIC });
   await new Promise(res => server.listen(0, '127.0.0.1', res));
   port = server.address().port;
+  requestToken = (await req('GET', '/api/session')).json.requestToken;
 });
 
 after(async () => {
@@ -31,10 +32,13 @@ after(async () => {
 });
 
 /** Make a request. `headers.Host` defaults to a local host so the guard passes. */
-function req(method, p, { body, headers = {} } = {}) {
+function req(method, p, { body, headers = {}, token = true } = {}) {
   return new Promise((resolve, reject) => {
     const data = body === undefined ? null : (typeof body === 'string' ? body : JSON.stringify(body));
     const h = { Host: `127.0.0.1:${port}`, ...headers };
+    if (token && !['GET', 'HEAD'].includes(method) && requestToken && !('X-Genograph-Token' in h)) {
+      h['X-Genograph-Token'] = requestToken;
+    }
     if (data != null && !('Content-Type' in h)) h['Content-Type'] = 'application/json';
     const r = http.request({ host: '127.0.0.1', port, path: p, method, headers: h }, res => {
       const chunks = [];
@@ -129,6 +133,33 @@ test('SECURITY — rejects a cross-origin state-changing request (anti CSRF)', a
 test('SECURITY — allows a same-origin Origin header', async () => {
   const res = await req('POST', '/api/trees', { body: { name: 'Same Origin OK' }, headers: { Origin: `http://127.0.0.1:${port}` } });
   assert.equal(res.status, 201);
+});
+
+test('SECURITY — mutations require the per-process request token', async () => {
+  const res = await req('POST', '/api/trees', {
+    body: { name: 'No token' },
+    headers: { Origin: `http://127.0.0.1:${port}` },
+    token: false
+  });
+  assert.equal(res.status, 403);
+  assert.match(res.text, /request token/);
+});
+
+test('SECURITY — rejects a different localhost port', async () => {
+  const res = await req('POST', '/api/trees', {
+    body: { name: 'Wrong local origin' },
+    headers: { Origin: 'http://127.0.0.1:9999' }
+  });
+  assert.equal(res.status, 403);
+});
+
+test('SECURITY — JSON endpoints reject CORS-safelisted text/plain bodies', async () => {
+  const res = await req('POST', '/api/trees', {
+    body: { name: 'Wrong media type' },
+    headers: { Origin: `http://127.0.0.1:${port}`, 'Content-Type': 'text/plain' }
+  });
+  assert.equal(res.status, 415);
+  assert.match(res.json.error, /application\/json/);
 });
 
 test('SECURITY — static path traversal is forbidden', async () => {

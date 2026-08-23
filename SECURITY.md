@@ -24,6 +24,8 @@ will be kept private until a fix is available and affected users can update.
 ## Security assumptions
 
 - The local server must remain bound to a loopback address.
+- Other websites and localhost origins are untrusted. Native processes already
+  running as the same operating-system user are inside the local trust boundary.
 - Tree files and browser storage should be protected like other sensitive local
   documents. Genograph does not encrypt the device or a synced folder.
 - A folder synchronized by another service is governed by that provider's

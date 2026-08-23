@@ -145,8 +145,11 @@ while active, the in-app picker is disabled so the session stays where you point
 - Trees are stored as individual JSON files in your data folder (by default
   `~/.genograph/trees`). Each save first copies the previous version into a
   `.backups/` folder (the newest copies are kept) so you can recover from mistakes.
+  On macOS and Linux, app-created files use owner-only permissions; the default
+  app folder is also tightened automatically when an older installation starts.
 - The server binds to `127.0.0.1` and rejects requests with a non-local `Host`
-  header, so other devices on your network cannot reach it.
+  header, so other devices on your network cannot reach it. Browser mutations
+  additionally require the exact local origin and a per-process request token.
 - Nothing is sent anywhere. This is a local tool; treat your data folder like any
   other personal documents and back it up yourself if it matters to you.
 

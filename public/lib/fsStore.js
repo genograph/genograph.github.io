@@ -10,27 +10,41 @@
  * ============================================================ */
 'use strict';
 
-import { isValidTree, isValidId, uniqueId, treeMeta, withName, emptyTree } from './treeStore.js';
+import { validateTree, isValidId, uniqueId, treeMeta, withName, emptyTree } from './treeStore.js';
 
 const BACKUP_DIR = '.backups';
 const TRASH_DIR = '.trash';
 const MAX_BACKUPS = 50;
 
 function timestamp() {
-  return new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+  return new Date().toISOString().replace(/[:T.]/g, '-').replace('Z', '');
+}
+
+let recoveryCounter = 0;
+function recoveryName(id) {
+  const nonce = globalThis.crypto?.randomUUID?.() ||
+    `${Date.now().toString(36)}-${(recoveryCounter++).toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${id}-${timestamp()}-${nonce}.json`;
+}
+
+async function readText(dir, name) {
+  const fh = await dir.getFileHandle(name);
+  return (await fh.getFile()).text();
 }
 
 async function readJson(dir, name) {
-  const fh = await dir.getFileHandle(name);
-  const file = await fh.getFile();
-  return JSON.parse(await file.text());
+  return JSON.parse(await readText(dir, name));
+}
+
+async function writeText(dir, name, text) {
+  const fh = await dir.getFileHandle(name, { create: true });
+  const writable = await fh.createWritable();
+  await writable.write(text);
+  await writable.close();
 }
 
 async function writeJson(dir, name, data) {
-  const fh = await dir.getFileHandle(name, { create: true });
-  const writable = await fh.createWritable();
-  await writable.write(JSON.stringify(data, null, 2) + '\n');
-  await writable.close();
+  await writeText(dir, name, JSON.stringify(data, null, 2) + '\n');
 }
 
 async function fileExists(dir, name) {
@@ -59,21 +73,17 @@ export function createFsStore(dirHandle) {
   async function backup(id) {
     const name = id + '.json';
     if (!(await fileExists(dir, name))) return;
-    try {
-      const data = await readJson(dir, name);
-      const bdir = await dir.getDirectoryHandle(BACKUP_DIR, { create: true });
-      await writeJson(bdir, `${id}-${timestamp()}.json`, data);
-      // Match only this tree's own timestamped backups — a loose prefix would
-      // also match a sibling tree like "family-2" when trimming "family".
-      // (ids are already validated slugs, so they contain no regex specials)
-      const re = new RegExp(`^${id}-\\d{4}(-\\d{2}){5}\\.json$`);
-      const backups = [];
-      for await (const [bn, h] of bdir.entries()) {
-        if (h.kind === 'file' && re.test(bn)) backups.push(bn);
-      }
-      backups.sort();
-      while (backups.length > MAX_BACKUPS) await bdir.removeEntry(backups.shift());
-    } catch { /* backups are best-effort; never block a save */ }
+    const text = await readText(dir, name);
+    const bdir = await dir.getDirectoryHandle(BACKUP_DIR, { create: true });
+    await writeText(bdir, recoveryName(id), text);
+    // Match only this tree's own backups, including the legacy second-resolution names.
+    const re = new RegExp(`^${id}-\\d{4}(-\\d{2}){5}(?:-\\d{3}-.+)?\\.json$`);
+    const backups = [];
+    for await (const [bn, h] of bdir.entries()) {
+      if (h.kind === 'file' && re.test(bn)) backups.push(bn);
+    }
+    backups.sort();
+    while (backups.length > MAX_BACKUPS) await bdir.removeEntry(backups.shift());
   }
 
   const store = {
@@ -91,18 +101,24 @@ export function createFsStore(dirHandle) {
     },
 
     async read(id) {
-      try { return await readJson(dir, fileFor(id)); }
+      try { return validateTree(await readJson(dir, fileFor(id))); }
       catch (e) {
         if (e.code === 'EBADID') throw e;
-        throw Object.assign(new Error('Tree not found'), { code: 'ENOENT' });
+        if (e instanceof SyntaxError) {
+          throw Object.assign(new Error('Not a valid tree file: invalid JSON.'), { code: 'EBADTREE' });
+        }
+        if (/^Not a valid tree file:/.test(e.message)) {
+          throw Object.assign(new Error(e.message), { code: 'EBADTREE' });
+        }
+        if (e.name === 'NotFoundError') throw Object.assign(new Error('Tree not found'), { code: 'ENOENT' });
+        throw e;
       }
     },
 
     async write(id, data) {
       const name = fileFor(id);
-      if (!isValidTree(data)) {
-        throw Object.assign(new Error('A tree must be an object with a "people" array.'), { code: 'EBADTREE' });
-      }
+      try { validateTree(data); }
+      catch (e) { throw Object.assign(new Error(e.message), { code: 'EBADTREE' }); }
       await backup(id);
       await writeJson(dir, name, data);
       return { id, people: data.people.length };
@@ -131,7 +147,8 @@ export function createFsStore(dirHandle) {
     },
 
     async importTree(name, data) {
-      if (!isValidTree(data)) throw Object.assign(new Error('Not a valid tree file.'), { code: 'EBADTREE' });
+      try { validateTree(data); }
+      catch (e) { throw Object.assign(new Error(e.message), { code: 'EBADTREE' }); }
       const display = String(name ?? '').trim() || (data.summary && data.summary.name) || 'Imported tree';
       const id = uniqueId(new Set(await listIds()), display);
       await store.write(id, withName(data, display));
@@ -141,11 +158,9 @@ export function createFsStore(dirHandle) {
     // Move the tree into .trash/ (recoverable), then remove it from the folder.
     async delete(id) {
       const name = fileFor(id);
-      try {
-        const data = await readJson(dir, name);
-        const tdir = await dir.getDirectoryHandle(TRASH_DIR, { create: true });
-        await writeJson(tdir, `${id}-${timestamp()}.json`, data);
-      } catch { /* if unreadable, still remove the original below */ }
+      const text = await readText(dir, name);
+      const tdir = await dir.getDirectoryHandle(TRASH_DIR, { create: true });
+      await writeText(tdir, recoveryName(id), text);
       await dir.removeEntry(name);
       return { id };
     }

@@ -8,7 +8,7 @@
  * ============================================================ */
 'use strict';
 
-import { isValidTree } from './model.js';
+import { isValidTree, validateTree } from './model.js';
 
 export const MAX_ID_LEN = 64;
 const ID_RE = /^[a-z0-9][a-z0-9_-]*$/;
@@ -29,6 +29,14 @@ export function slugify(name) {
     .replace(/-+$/g, '');
 }
 
+/** Append a collision suffix without ever exceeding the id length cap. */
+export function suffixedId(base, n) {
+  const suffix = `-${n}`;
+  const stem = String(base).slice(0, Math.max(1, MAX_ID_LEN - suffix.length))
+    .replace(/[-_]+$/g, '') || 'tree';
+  return `${stem}${suffix}`;
+}
+
 /**
  * Pick a fresh id derived from a name, avoiding collisions with ids already in
  * use. `existing` may be a Set or any iterable of taken ids.
@@ -37,7 +45,7 @@ export function uniqueId(existing, name) {
   const taken = existing instanceof Set ? existing : new Set(existing);
   const base = slugify(name) || 'tree';
   let id = base, n = 2;
-  while (taken.has(id)) id = `${base}-${n++}`.slice(0, MAX_ID_LEN);
+  while (taken.has(id)) id = suffixedId(base, n++);
   return id;
 }
 
@@ -65,4 +73,4 @@ export function withName(raw, name) {
   return raw;
 }
 
-export { isValidTree };
+export { isValidTree, validateTree };

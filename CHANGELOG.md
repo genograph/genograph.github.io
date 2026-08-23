@@ -6,6 +6,28 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-08-23
+
+### Security
+- Validate the local API's complete browser origin, including scheme and port,
+  require a per-process request token for mutations, and require JSON media
+  types for endpoints that accept JSON bodies.
+- Create local data, configuration, temporary and recovery files with private
+  permissions, and use unique no-clobber filenames for concurrent writes,
+  backups, trash entries and folder moves.
+- Validate imported tree documents and bound their size, depth, person count
+  and relationship arrays before storing or rendering them.
+- Pin every GitHub Action to an immutable commit and pin the npm publishing
+  client, with Dependabot updates for the pinned actions.
+
+### Fixed
+- Maximum-length tree names no longer hang when their generated id collides.
+- Simultaneous saves no longer race on the same temporary file.
+- Multiple backups or deletions in the same second retain distinct recovery
+  copies, and browser-folder saves stop if a required backup cannot be made.
+- Moving a maximum-length tree id into a folder containing the same id now
+  chooses a valid destination id that remains visible in the library.
+
 ## [1.2.1] - 2026-08-22
 
 ### Security
@@ -124,7 +146,8 @@ First public release.
 - Strict path handling for static files and tree storage.
 - Strict Content-Security-Policy; no external resources or network calls.
 
-[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/genograph/genograph.github.io/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.2
 [1.2.1]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.1
 [1.2.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.2.0
 [1.1.0]: https://github.com/genograph/genograph.github.io/releases/tag/v1.1.0

@@ -77,14 +77,15 @@ test('fsStore — write validates structure and backs up the previous version', 
 
   await store.write('doc', { summary: { name: 'Doc' }, people: [{ id: 'p1', name: 'First' }] });
   await store.write('doc', { summary: { name: 'Doc' }, people: [{ id: 'p1', name: 'Second' }] });
+  await store.write('doc', { summary: { name: 'Doc' }, people: [{ id: 'p1', name: 'Third' }] });
 
-  assert.equal((await store.read('doc')).people[0].name, 'Second');
+  assert.equal((await store.read('doc')).people[0].name, 'Third');
   const backups = await dir.getDirectoryHandle('.backups');
   const names = [...backups.children.keys()];
-  assert.equal(names.length, 1, 'one backup of the pre-overwrite version');
+  assert.equal(names.length, 2, 'every overwrite has a distinct backup');
   assert.ok(names[0].startsWith('doc-'));
-  const backed = await readFile(backups, names[0]);
-  assert.equal(backed.people[0].name, 'First', 'backup holds the previous content');
+  const backed = await Promise.all(names.map(name => readFile(backups, name)));
+  assert.deepEqual(backed.map(data => data.people[0].name).sort(), ['First', 'Second']);
 });
 
 test('fsStore — invalid ids are refused, not written outside the folder', async () => {
@@ -118,6 +119,36 @@ test('fsStore — delete moves the tree to .trash (recoverable)', async () => {
   const trash = await dir.getDirectoryHandle('.trash');
   const names = [...trash.children.keys()];
   assert.ok(names.some(n => n.startsWith('doomed-')), 'a recoverable copy is in .trash');
+});
+
+test('fsStore — deleting malformed JSON still preserves the original bytes', async () => {
+  const dir = new FakeDir();
+  const store = createFsStore(dir);
+  (await dir.getFileHandle('broken.json', { create: true })).contents = '{ not json';
+  await store.delete('broken');
+
+  assert.ok(!dir.children.has('broken.json'));
+  const trash = await dir.getDirectoryHandle('.trash');
+  const [name] = [...trash.children.keys()];
+  const file = await (await trash.getFileHandle(name)).getFile();
+  assert.equal(await file.text(), '{ not json');
+});
+
+test('fsStore — a backup failure blocks the overwrite', async () => {
+  class BackupFailDir extends FakeDir {
+    async getDirectoryHandle(name, opts = {}) {
+      if (name === '.backups') throw new Error('backup unavailable');
+      return super.getDirectoryHandle(name, opts);
+    }
+  }
+  const dir = new BackupFailDir();
+  const store = createFsStore(dir);
+  await store.write('doc', { people: [{ id: 'p1', name: 'Original' }] });
+  await assert.rejects(
+    () => store.write('doc', { people: [{ id: 'p1', name: 'Replacement' }] }),
+    /backup unavailable/
+  );
+  assert.equal((await store.read('doc')).people[0].name, 'Original');
 });
 
 test('fsStore — list skips dotfiles and flags unparseable files', async () => {
