@@ -39,8 +39,17 @@ jobs:
       - name: Use npm 11.19.0
         run: npm install --global npm@11.19.0
 
+      - name: Install test tooling
+        run: npm ci
+
       - name: Run tests
         run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser smoke tests
+        run: npm run test:e2e
 
       - name: Read release metadata
         id: package

@@ -1,6 +1,6 @@
 {
   "name": "genograph",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Genograph — Offline, private family-tree browser & editor that runs in your browser. Your data never leaves your machine.",
   "type": "module",
   "bin": {
@@ -10,6 +10,8 @@
     "start": "node bin/genograph.js --data ./trees",
     "dev": "node bin/genograph.js --data ./trees",
     "test": "node --test",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e",
     "test:watch": "node --test --watch"
   },
   "files": [
@@ -44,6 +46,9 @@
     "url": "git+https://github.com/genograph/genograph.github.io.git"
   },
   "homepage": "https://genograph.github.io/",
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  },
   "bugs": {
     "url": "https://github.com/genograph/genograph.github.io/issues"
   }

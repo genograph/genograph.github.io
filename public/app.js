@@ -13,6 +13,8 @@ import {
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 import { initialLanguage } from './lib/i18n.js';
+import { SaveCoordinator } from './lib/autosave.js';
+import { assertCanSetParent, linkSpouses, setParent } from './lib/relationships.js';
 
 /* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
  * send headers, so refuse to run framed (anti-clickjacking) here instead.
@@ -27,6 +29,11 @@ const I18N = {
   tr: {
     title: 'Aile Ağacı', modeFull: 'Tüm Aile', modeClose: 'Yakın Aile', modeAnc: 'Atalar',
     search: 'Kişi ara…', saved: 'Kaydedildi', saving: 'Kaydediliyor…', unsaved: 'Kaydedilmedi ●', saveErr: 'Kayıt hatası!',
+    layoutTooComplex: 'Bu ilişki ağı güvenle çizilemeyecek kadar karmaşık.',
+    relationshipCycle: 'Bu ilişki bir soy döngüsü oluşturur ve eklenemez.',
+    relationshipInvalid: 'Bu ilişki eklenemez.',
+    cardHelp: '{n}. Düzenlemek için Enter, odaklamak için Shift+Enter.',
+    zoomInLabel: 'Yakınlaştır', zoomOutLabel: 'Uzaklaştır',
     name: 'Ad Soyad', sex: 'Cinsiyet', male: 'Erkek', female: 'Kadın',
     birthDate: 'Doğum tarihi', birthPlace: 'Doğum yeri', deathDate: 'Ölüm tarihi', deathPlace: 'Ölüm yeri',
     burialPlace: 'Defin yeri', occupation: 'Meslek', notes: 'Notlar', notesPh: 'Görüşme notları…', deceased: 'Vefat etmiş',
@@ -104,6 +111,11 @@ const I18N = {
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
     search: 'Search people…', saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved ●', saveErr: 'Save failed!',
+    layoutTooComplex: 'This relationship graph is too complex to lay out safely.',
+    relationshipCycle: 'That relationship would create an ancestry cycle.',
+    relationshipInvalid: 'That relationship cannot be added.',
+    cardHelp: '{n}. Press Enter to edit; Shift+Enter to focus.',
+    zoomInLabel: 'Zoom in', zoomOutLabel: 'Zoom out',
     name: 'Full name', sex: 'Sex', male: 'Male', female: 'Female',
     birthDate: 'Birth date', birthPlace: 'Birth place', deathDate: 'Death date', deathPlace: 'Death place',
     burialPlace: 'Burial place', occupation: 'Occupation', notes: 'Notes', notesPh: 'Interview notes…', deceased: 'Deceased',
@@ -195,7 +207,11 @@ const DEFAULT_SVG = '<svg aria-hidden="true" viewBox="0 0 24 24" width="17" heig
 function applyTheme() {
   document.documentElement.dataset.theme = theme;
   const btn = $('themeBtn');
-  if (btn) { btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG; btn.title = t('theme'); }
+  if (btn) {
+    btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
+    btn.title = t('theme');
+    btn.setAttribute('aria-label', t('theme'));
+  }
 }
 const t = (k, vars) => {
   let s = (I18N[lang][k] ?? I18N.tr[k] ?? k);
@@ -218,6 +234,7 @@ const MODES = ['full', 'close', 'ancestors'];
 let mode = MODES.includes(localStorage.getItem('ft_mode')) ? localStorage.getItem('ft_mode') : 'full';
 let selectedId = null;
 let dirty = false, saveTimer = null;
+const saves = new SaveCoordinator();
 const view = { tx: 0, ty: 0, s: 1 };
 let placedIds = new Set();
 let lastLayout = null;
@@ -262,6 +279,8 @@ async function openTree(id) {
   focusId = rootId;
   selectedId = null;
   currentTreeId = id;
+  clearTimeout(saveTimer);
+  saves.reset();
   dirty = false;
   localStorage.setItem('ft_tree', id);
   updateTreeButton();
@@ -278,26 +297,41 @@ function setStatus(cls, text) {
   el.textContent = text;
 }
 function markDirty() {
-  dirty = true;
+  saves.markDirty();
+  dirty = saves.dirty;
   setStatus('dirty', t('unsaved'));
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 1100);
 }
 async function saveNow() {
   clearTimeout(saveTimer);
-  if (!model || !currentTreeId) return;
+  if (!model || !currentTreeId || !dirty) return true;
+  const targetStore = store;
+  const targetTreeId = currentTreeId;
+  const payload = structuredClone(serialize(model));
   setStatus('dirty', t('saving'));
-  try {
-    await store.write(currentTreeId, serialize(model));
-    dirty = false;
-    const now = new Date();
-    setStatus('saved', '✓ ' + t('saved') + ' ' + now.toTimeString().slice(0, 5));
-    const td = trees.find(x => x.id === currentTreeId);
-    if (td) td.people = model.people.length;
-  } catch (e) {
+  const result = await saves.save(() => targetStore.write(targetTreeId, payload));
+  dirty = saves.dirty;
+  if (result.ok) {
+    if (dirty) {
+      setStatus('dirty', t('unsaved'));
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveNow, 1100);
+    } else {
+      const now = new Date();
+      setStatus('saved', '✓ ' + t('saved') + ' ' + now.toTimeString().slice(0, 5));
+    }
+    const td = trees.find(x => x.id === targetTreeId);
+    if (td) td.people = payload.people.length;
+    return true;
+  } else {
     setStatus('error', t('saveErr'));
-    snack(t('saveErr') + ' — ' + e.message);
+    snack(t('saveErr') + ' — ' + result.error.message);
+    return false;
   }
+}
+async function flushBeforeTransition() {
+  return !dirty || await saveNow();
 }
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 // Flush a pending autosave when the tab is hidden or closing (best-effort;
@@ -311,6 +345,7 @@ window.addEventListener('pagehide', () => { if (dirty) saveNow(); });
 function renderTree() {
   const svg = $('lines'), cardsEl = $('cards');
   if (!model || !model.people.length) {
+    $('canvasError').classList.add('hidden');
     svg.innerHTML = ''; cardsEl.replaceChildren();
     placedIds = new Set();
     lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
@@ -320,7 +355,20 @@ function renderTree() {
     return;
   }
   $('emptyState').classList.add('hidden');
-  const { cards, segs, bbox } = layout(model, focusId, mode);
+  let output;
+  try {
+    output = layout(model, focusId, mode);
+    $('canvasError').classList.add('hidden');
+  } catch (error) {
+    svg.innerHTML = ''; cardsEl.replaceChildren();
+    placedIds = new Set();
+    lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
+    $('stats').textContent = '';
+    $('canvasError').textContent = t('layoutTooComplex');
+    $('canvasError').classList.remove('hidden');
+    return;
+  }
+  const { cards, segs, bbox } = output;
   placedIds = new Set(cards.map(c => c.id));
   lastLayout = { cards, segs, bbox };
 
@@ -346,6 +394,10 @@ function renderTree() {
     div.style.top = c.y + 'px';
     div.dataset.id = c.id;
     div.title = t('dblFocus');
+    div.tabIndex = 0;
+    div.setAttribute('role', 'treeitem');
+    div.setAttribute('aria-selected', c.id === selectedId ? 'true' : 'false');
+    div.setAttribute('aria-label', t('cardHelp', { n: p.name }));
     const span = lifeSpan(p);
     const placeSrc = p.birth_place || p.birth_country || '';
     const place = ((p.birth_place_uncertain ? '~' : '') + placeSrc.split(',')[0].trim()).replace(/^~$/, '');
@@ -526,6 +578,13 @@ function setupCanvas() {
     const card = e.target.closest('.card') || pressCard;
     if (card) { setFocus(card.dataset.id); }
   });
+  cv.addEventListener('keydown', e => {
+    const card = e.target.closest('.card');
+    if (!card || e.target.closest('.qadd') || !['Enter', ' '].includes(e.key)) return;
+    e.preventDefault();
+    if (e.key === 'Enter' && e.shiftKey) setFocus(card.dataset.id);
+    else selectPerson(card.dataset.id, { focusCard: true });
+  });
   cv.addEventListener('wheel', e => {
     e.preventDefault();
     const rect = cv.getBoundingClientRect();
@@ -543,6 +602,7 @@ function selectPerson(id, opts = {}) {
   renderTree();
   renderPanel();
   if (opts.pan && placedIds.has(id)) panToPerson(id);
+  if (opts.focusCard) document.querySelector(`.card[data-id="${CSS.escape(id)}"]`)?.focus();
 }
 function setFocus(id) {
   focusId = id;
@@ -561,20 +621,23 @@ function setDefaultPerson(id) {
 }
 
 function fieldRow(key, label, p, ph) {
-  return `<div class="field"><label>${esc(label)}</label>` +
-    `<input data-f="${key}" value="${esc(p[key] ?? '')}" placeholder="${esc(ph || '')}"></div>`;
+  const id = `pf-${key}`;
+  return `<div class="field"><label for="${id}">${esc(label)}</label>` +
+    `<input id="${id}" data-f="${key}" value="${esc(p[key] ?? '')}" placeholder="${esc(ph || '')}"></div>`;
 }
 function dateRow(key, label, p) {
   const unc = key + '_uncertain';
-  return `<div class="field"><label>${esc(label)}` +
-    `<span class="unclbl"><input type="checkbox" data-unc="${unc}" ${p[unc] ? 'checked' : ''}> ${esc(t('uncertain'))}</span></label>` +
-    `<input data-f="${key}" data-date="1" value="${esc(p[key] ?? '')}" placeholder="YYYY.MM.DD"></div>`;
+  const id = `pf-${key}`, uncId = `pf-${unc}`;
+  return `<div class="field"><label for="${id}">${esc(label)}</label>` +
+    `<label class="unclbl" for="${uncId}"><input id="${uncId}" type="checkbox" data-unc="${unc}" ${p[unc] ? 'checked' : ''}> ${esc(t('uncertain'))}</label>` +
+    `<input id="${id}" data-f="${key}" data-date="1" value="${esc(p[key] ?? '')}" placeholder="YYYY.MM.DD"></div>`;
 }
 function placeRow(key, label, p) {
   const unc = key + '_uncertain';
-  return `<div class="field"><label>${esc(label)}` +
-    `<span class="unclbl"><input type="checkbox" data-unc="${unc}" ${p[unc] ? 'checked' : ''}> ${esc(t('uncertain'))}</span></label>` +
-    `<input data-f="${key}" value="${esc(p[key] ?? '')}"></div>`;
+  const id = `pf-${key}`, uncId = `pf-${unc}`;
+  return `<div class="field"><label for="${id}">${esc(label)}</label>` +
+    `<label class="unclbl" for="${uncId}"><input id="${uncId}" type="checkbox" data-unc="${unc}" ${p[unc] ? 'checked' : ''}> ${esc(t('uncertain'))}</label>` +
+    `<input id="${id}" data-f="${key}" value="${esc(p[key] ?? '')}"></div>`;
 }
 function causeOptions(sel) {
   return `<option value="">${esc(t('notSet'))}</option>` +
@@ -612,8 +675,8 @@ function renderPanel() {
 
   panel.innerHTML = `
     <div class="panel-head">
-      <h2>${esc(p.name)}</h2>
-      <button class="iconbtn" id="panelClose" title="${t('closePanel')}">✕</button>
+      <h2 id="panelName">${esc(p.name)}</h2>
+      <button class="iconbtn" id="panelClose" title="${t('closePanel')}" aria-label="${t('closePanel')}">✕</button>
     </div>
     ${badge}
     ${placedIds.has(p.id) ? '' : `<div class="notvisible">${t('notInTree')}</div>`}
@@ -621,9 +684,9 @@ function renderPanel() {
     ${fieldRow('aliases', t('aliases'), p)}
     ${p.sex === 'F' ? fieldRow('maiden_name', t('maidenName'), p) : ''}
     <div class="field"><label>${t('sex')}</label>
-      <div class="segmini">
-        <button type="button" data-sexval="M" class="${p.sex === 'M' ? 'active' : ''}">${t('male')}</button>
-        <button type="button" data-sexval="F" class="${p.sex === 'F' ? 'active' : ''}">${t('female')}</button>
+      <div class="segmini" role="group" aria-label="${t('sex')}">
+        <button type="button" data-sexval="M" aria-pressed="${p.sex === 'M'}" class="${p.sex === 'M' ? 'active' : ''}">${t('male')}</button>
+        <button type="button" data-sexval="F" aria-pressed="${p.sex === 'F'}" class="${p.sex === 'F' ? 'active' : ''}">${t('female')}</button>
       </div>
     </div>
     ${dateRow('birth_date', t('birthDate'), p)}
@@ -638,18 +701,18 @@ function renderPanel() {
     </div>
     <label class="checkrow"><input type="checkbox" id="pDeceased" ${p.deceased ? 'checked' : ''}> ${t('deceased')}</label>
     ${p.deceased ? `<div class="row2">
-      <div class="field"><label>${t('deathCause')}</label>
-        <select data-f="death_cause">${causeOptions(p.death_cause)}</select></div>
-      <div class="field"><label>${t('deathCauseDetail')}</label>
-        <input data-f="death_cause_detail" value="${esc(p.death_cause_detail ?? '')}"></div>
+      <div class="field"><label for="pf-death_cause">${t('deathCause')}</label>
+        <select id="pf-death_cause" data-f="death_cause">${causeOptions(p.death_cause)}</select></div>
+      <div class="field"><label for="pf-death_cause_detail">${t('deathCauseDetail')}</label>
+        <input id="pf-death_cause_detail" data-f="death_cause_detail" value="${esc(p.death_cause_detail ?? '')}"></div>
     </div>` : ''}
     <label class="checkrow"><input type="checkbox" id="pIlleg" ${p.had_illegitimate_children ? 'checked' : ''}> ${t('illegit')}</label>
     <div class="row2">
       ${fieldRow('burial_place', t('burialPlace'), p)}
       ${fieldRow('occupation', t('occupation'), p)}
     </div>
-    <div class="field"><label>${t('notes')}</label>
-      <textarea data-f="notes" placeholder="${esc(t('notesPh'))}">${esc(p.notes ?? '')}</textarea>
+    <div class="field"><label for="pf-notes">${t('notes')}</label>
+      <textarea id="pf-notes" data-f="notes" placeholder="${esc(t('notesPh'))}">${esc(p.notes ?? '')}</textarea>
     </div>
     <div class="relsec">
       <h3>${t('father')}</h3><div class="chips">${fatherHtml}</div>
@@ -665,6 +728,7 @@ function renderPanel() {
     </div>`;
 
   panel.classList.remove('hidden');
+  panel.setAttribute('aria-labelledby', 'panelName');
 
   $('panelClose').onclick = () => { selectedId = null; renderTree(); renderPanel(); };
   $('pFocus').onclick = () => setFocus(p.id);
@@ -786,6 +850,8 @@ function openAddDialog(relation, anchorId) {
 function updateSexButtons() {
   $('sexM').className = addState.sex === 'M' ? 'active' : '';
   $('sexF').className = addState.sex === 'F' ? 'active' : '';
+  $('sexM').setAttribute('aria-pressed', String(addState.sex === 'M'));
+  $('sexF').setAttribute('aria-pressed', String(addState.sex === 'F'));
 }
 
 function setupAddDialog() {
@@ -809,7 +875,7 @@ function setupAddDialog() {
       .slice(0, 8);
     if (!hits.length) { box.classList.add('hidden'); return; }
     box.innerHTML = hits.map(p =>
-      `<div class="item" data-pick="${esc(p.id)}"><span>${esc(p.name)}</span><span class="meta">${esc(lifeSpan(p))}</span></div>`).join('');
+      `<button type="button" class="item" role="option" data-pick="${esc(p.id)}"><span>${esc(p.name)}</span><span class="meta">${esc(lifeSpan(p))}</span></button>`).join('');
     box.classList.remove('hidden');
     box.querySelectorAll('[data-pick]').forEach(it => {
       it.onmousedown = e => {
@@ -849,7 +915,10 @@ function commitAdd() {
     person = {
       id: genId(), name, sex: addState.sex,
       _father: null, _mother: null, _spouses: [], _children: [],
-      _unres: { father: null, mother: null, spouses: [], children: [] }
+      _unres: {
+        father: null, mother: null, spouses: [], children: [],
+        fatherId: null, motherId: null, spouseIds: [], childIds: []
+      }
     };
     const val = id => $(id).value.trim();
     const dval = id => val(id).replace(/[-/\s]+/g, '.');
@@ -874,35 +943,42 @@ function commitAdd() {
     model.people.push(person);
     model.byId.set(person.id, person);
   }
+  const newPerson = !existingId;
+  const parentLinks = [];
   if (anchor && relation === 'child') {
-    if (anchor.sex === 'F') person._mother = anchor.id; else person._father = anchor.id;
-    if (!anchor._children.includes(person.id)) anchor._children.push(person.id);
+    const anchorSlot = anchor.sex === 'F' ? '_mother' : '_father';
+    parentLinks.push({ childId: person.id, parentId: anchor.id, slot: anchorSlot });
     const otherId = $('fOther').classList.contains('hidden') ? '' : $('apOther').value;
     if (otherId && model.byId.has(otherId)) {
-      const other = model.byId.get(otherId);
-      if (other.sex === 'F') person._mother = other.id; else person._father = other.id;
-      if (!other._children.includes(person.id)) other._children.push(person.id);
+      parentLinks.push({ childId: person.id, parentId: otherId, slot: anchorSlot === '_mother' ? '_father' : '_mother' });
     }
-  } else if (anchor && relation === 'spouse') {
-    if (!anchor._spouses.includes(person.id)) anchor._spouses.push(person.id);
-    if (!person._spouses.includes(anchor.id)) person._spouses.push(anchor.id);
   } else if (anchor && (relation === 'father' || relation === 'mother')) {
     if (!existingId) person.sex = relation === 'father' ? 'M' : 'F';
-    if (relation === 'father') anchor._father = person.id; else anchor._mother = person.id;
-    if (!person._children.includes(anchor.id)) person._children.push(anchor.id);
+    parentLinks.push({ childId: anchor.id, parentId: person.id, slot: relation === 'father' ? '_father' : '_mother' });
   } else if (anchor && relation === 'sibling') {
-    const linkParent = (parId, slot) => {
-      const parent = parId && model.byId.get(parId);
-      if (!parent) return;
-      person[slot] = parent.id;
-      if (!parent._children.includes(person.id)) parent._children.push(person.id);
-      touch(parent);
-    };
-    linkParent(anchor._father, '_father');
-    linkParent(anchor._mother, '_mother');
+    if (anchor._father) parentLinks.push({ childId: person.id, parentId: anchor._father, slot: '_father' });
+    if (anchor._mother) parentLinks.push({ childId: person.id, parentId: anchor._mother, slot: '_mother' });
   }
-  touch(person);
-  if (anchor) touch(anchor);
+  try {
+    parentLinks.forEach(link => assertCanSetParent(model, link.childId, link.parentId, link.slot));
+    const touched = new Set([person, anchor].filter(Boolean));
+    for (const link of parentLinks) {
+      const changed = setParent(model, link.childId, link.parentId, link.slot);
+      for (const value of [changed.child, changed.parent, changed.previous]) if (value) touched.add(value);
+    }
+    if (anchor && relation === 'spouse') {
+      const linked = linkSpouses(model, anchor.id, person.id);
+      touched.add(linked.first); touched.add(linked.second);
+    }
+    touched.forEach(touch);
+  } catch (error) {
+    if (newPerson) {
+      model.people = model.people.filter(candidate => candidate.id !== person.id);
+      model.byId.delete(person.id);
+    }
+    snack(t(error.code === 'ECYCLE' ? 'relationshipCycle' : 'relationshipInvalid'));
+    return;
+  }
   // first person in a fresh tree becomes the root/focus so the layout has somewhere to start
   if (!rootId || !model.byId.has(rootId)) rootId = rootIdOf(model);
   if (!focusId || !model.byId.has(focusId)) focusId = rootId;
@@ -1079,11 +1155,12 @@ function renderTreeMenu() {
   });
 }
 async function switchTree(id) {
-  if (dirty) await saveNow();
+  if (!await flushBeforeTransition()) return;
   try { await openTree(id); } catch (e) { snack(t('loadError') + ': ' + e.message); }
 }
 async function newTree() {
   closeTreeMenu();
+  if (!await flushBeforeTransition()) return;
   const name = await askPrompt(t('newTreeTitle'), '', t('add'));
   if (!name) return;
   try {
@@ -1109,7 +1186,7 @@ async function renameCurrent() {
 async function duplicateCurrent() {
   closeTreeMenu();
   if (!currentTreeId) return;
-  if (dirty) await saveNow();
+  if (!await flushBeforeTransition()) return;
   try {
     const out = await store.duplicate(currentTreeId);
     await refreshTrees();
@@ -1137,6 +1214,7 @@ async function deleteCurrent() {
 /** Clear the workspace when no tree is open (after deleting the last one, or an empty store). */
 function resetToEmpty() {
   model = null; currentTreeId = null; rootId = null; focusId = null; selectedId = null;
+  clearTimeout(saveTimer); saves.reset(); dirty = false;
   localStorage.removeItem('ft_tree');
   updateTreeButton(); renderTree(); renderPanel();
 }
@@ -1153,6 +1231,7 @@ function exportCurrent() {
 }
 async function importTreeFile(file) {
   if (!file) return;
+  if (!await flushBeforeTransition()) return;
   try {
     if (file.size > TREE_LIMITS.maxCharacters) throw new Error('File is larger than 25 MB.');
     const data = JSON.parse(await file.text());
@@ -1212,7 +1291,7 @@ async function saveDataFolder() {
   const dataDir = $('ddPath').value.trim();
   if (!dataDir) { $('dataDialog').close(); return; }
   const move = $('ddMove').checked;
-  if (dirty) await saveNow();   // don't lose unsaved edits before relocating
+  if (!await flushBeforeTransition()) return;
   try {
     settings = await store.putSettings({ dataDir, move });
     $('dataDialog').close();
@@ -1268,7 +1347,7 @@ function updateStoreRow() {
 async function pickFolder() {
   closeTreeMenu();
   try {
-    if (dirty) await saveNow();   // flush edits into the current store before switching
+    if (!await flushBeforeTransition()) return;
     const res = await openFolder(savedHandle);
     if (!res) return;             // user cancelled the picker
     store = res.store; storeMode = res.mode; savedHandle = null;
@@ -1289,19 +1368,21 @@ function setupStoreRow() {
 function setupSearch() {
   const inp = $('searchInput'), box = $('searchResults');
   function run() {
-    if (!model) { box.classList.add('hidden'); return; }
+    if (!model) { box.classList.add('hidden'); inp.setAttribute('aria-expanded', 'false'); return; }
     const q = norm(inp.value.trim());
-    if (q.length < 2) { box.classList.add('hidden'); return; }
+    if (q.length < 2) { box.classList.add('hidden'); inp.setAttribute('aria-expanded', 'false'); return; }
     const hits = model.people.filter(p => searchText(p).includes(q)).slice(0, 12);
     box.innerHTML = hits.length
       ? hits.map(p =>
-        `<div class="item" data-id="${esc(p.id)}"><span>${esc(p.name)}</span>` +
-        `<span class="meta">${esc(lifeSpan(p))}${placedIds.has(p.id) ? '' : ' <span class="off">· ' + t('offTree') + '</span>'}</span></div>`).join('')
-      : `<div class="item"><span class="meta">${t('noResults')}</span></div>`;
+        `<button type="button" class="item" role="option" data-id="${esc(p.id)}"><span>${esc(p.name)}</span>` +
+        `<span class="meta">${esc(lifeSpan(p))}${placedIds.has(p.id) ? '' : ' <span class="off">· ' + t('offTree') + '</span>'}</span></button>`).join('')
+      : `<div class="item" role="option" aria-disabled="true"><span class="meta">${t('noResults')}</span></div>`;
     box.classList.remove('hidden');
+    inp.setAttribute('aria-expanded', 'true');
     box.querySelectorAll('[data-id]').forEach(it => {
       it.onclick = () => {
         box.classList.add('hidden');
+        inp.setAttribute('aria-expanded', 'false');
         inp.value = '';
         selectPerson(it.dataset.id, { pan: true });
       };
@@ -1310,14 +1391,14 @@ function setupSearch() {
   inp.addEventListener('input', run);
   inp.addEventListener('focus', run);
   inp.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { box.classList.add('hidden'); inp.blur(); }
+    if (e.key === 'Escape') { box.classList.add('hidden'); inp.setAttribute('aria-expanded', 'false'); inp.blur(); }
     if (e.key === 'Enter') {
       const first = box.querySelector('[data-id]');
       if (first) first.onclick();
     }
   });
   document.addEventListener('click', e => {
-    if (!e.target.closest('.search')) box.classList.add('hidden');
+    if (!e.target.closest('.search')) { box.classList.add('hidden'); inp.setAttribute('aria-expanded', 'false'); }
   });
 }
 
@@ -1328,13 +1409,22 @@ function applyLabels() {
   $('segClose').textContent = t('modeClose');
   $('segAnc').textContent = t('modeAnc');
   $('searchInput').placeholder = t('search');
+  $('searchInput').setAttribute('aria-label', t('search'));
   $('homeBtn').title = t('home');
+  $('homeBtn').setAttribute('aria-label', t('home'));
   $('helpBtn').title = t('welcomeHelp');
+  $('helpBtn').setAttribute('aria-label', t('welcomeHelp'));
   $('focusClear').title = t('clearFocus');
+  $('focusClear').setAttribute('aria-label', t('clearFocus'));
   applyTheme();
   $('langBtn').textContent = lang === 'tr' ? 'EN' : 'TR';
   $('zoomFit').textContent = t('fit');
+  $('zoomIn').setAttribute('aria-label', t('zoomInLabel'));
+  $('zoomOut').setAttribute('aria-label', t('zoomOutLabel'));
+  $('zoomFit').setAttribute('aria-label', t('fit'));
   $('fab').title = t('fabTitle');
+  $('fab').setAttribute('aria-label', t('fabTitle'));
+  $('welcomeClose').setAttribute('aria-label', t('closePanel'));
   $('tmNew').querySelector('span').textContent = t('newTree');
   $('tmImport').querySelector('span').textContent = t('importTreeBtn');
   $('tmRename').title = t('renameTree');
@@ -1344,8 +1434,11 @@ function applyLabels() {
   $('tmDataLabel').textContent = t('dataFolder');
   updateStoreRow();
   updateTreeButton();
-  document.querySelectorAll('#modeSeg button').forEach(b =>
-    b.classList.toggle('active', b.dataset.mode === mode));
+  document.querySelectorAll('#modeSeg button').forEach(b => {
+    const active = b.dataset.mode === mode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
   if (!dirty) setStatus('saved', model ? '✓ ' + t('saved') : '');
 }
 

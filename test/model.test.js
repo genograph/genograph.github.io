@@ -111,6 +111,25 @@ test('buildModel — keeps truly ambiguous references as unresolved (lossless)',
   assert.ok(m.byId.get('c')._unres.spouses.includes('Pat'), 'ambiguous spouse kept as unresolved');
 });
 
+test('buildModel — preserves valid and dangling explicit relationship ids losslessly', () => {
+  const model = buildModel({
+    people: [
+      { id: 'a', name: 'A', spouse_ids: ['b', 'missing-spouse'], children_ids: ['c', 'missing-child'] },
+      { id: 'b', name: 'B' },
+      { id: 'c', name: 'C', father_id: 'missing-father', father: 'Unknown father' }
+    ]
+  });
+  assert.deepEqual(model.byId.get('a')._spouses, ['b']);
+  assert.deepEqual(model.byId.get('a')._children, ['c']);
+  const out = serialize(model);
+  const a = out.people.find(person => person.id === 'a');
+  const c = out.people.find(person => person.id === 'c');
+  assert.deepEqual(a.spouse_ids, ['b', 'missing-spouse']);
+  assert.deepEqual(a.children_ids, ['c', 'missing-child']);
+  assert.equal(c.father_id, 'missing-father');
+  assert.equal(c.father, 'Unknown father');
+});
+
 test('buildModel — tie-breaks an ambiguous parent by sex (best effort)', () => {
   // Two males named "Twin", neither listing the child: resolver falls back to the
   // first sex-matching candidate rather than dropping the link.

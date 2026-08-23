@@ -15,6 +15,7 @@
 import { birthSortIds } from './model.js';
 
 export const CARD_W = 180, CARD_H = 72, H_GAP = 18, PITCH = 175, MAXDEPTH = 30;
+export const MAX_LAYOUT_WORK = 40_000, MAX_LAYOUT_CARDS = 12_000;
 
 /**
  * @returns {{cards: {id,x,y}[], segs: [number,number,number,number][], bbox: {minX,minY,maxX,maxY}}}
@@ -22,6 +23,12 @@ export const CARD_W = 180, CARD_H = 72, H_GAP = 18, PITCH = 175, MAXDEPTH = 30;
 export function layout(model, focusId, mode) {
   const by = id => model.byId.get(id);
   const cards = [], segs = [];
+  let work = 0;
+  const spend = () => {
+    if (++work > MAX_LAYOUT_WORK) {
+      throw new RangeError('Tree layout exceeds the safe complexity limit.');
+    }
+  };
   const spine = new Set();
   (function up(id, d) {
     if (!id || d > MAXDEPTH || spine.has(id)) return;
@@ -31,7 +38,12 @@ export function layout(model, focusId, mode) {
   })(focusId, 0);
 
   const full = mode === 'full', ancOnly = mode === 'ancestors';
-  const addCard = (id, x, gen) => cards.push({ id, x, y: -gen * PITCH });
+  const addCard = (id, x, gen) => {
+    if (cards.length >= MAX_LAYOUT_CARDS) {
+      throw new RangeError('Tree layout exceeds the safe card limit.');
+    }
+    cards.push({ id, x, y: -gen * PITCH });
+  };
   const seg = (a, b, c, d) => segs.push([a, b, c, d]);
   const GAP = H_GAP, INF = 1e9;
 
@@ -85,12 +97,15 @@ export function layout(model, focusId, mode) {
 
   // descendant block: person (+spouses, +children recursively in full mode)
   function descNode(pid, depth, trail = new Set()) {
+    spend();
     const p = by(pid);
     const withFam = full && !!p && depth < MAXDEPTH && !trail.has(pid);
     const nextTrail = new Set(trail);
     nextTrail.add(pid);
-    const spouses = withFam ? p._spouses.filter(s => !spine.has(s) && by(s)) : [];
-    const kids = withFam ? birthSortIds(model, p._children.filter(c => by(c) && !nextTrail.has(c))) : [];
+    const spouses = withFam ? [...new Set(p._spouses.filter(s => !spine.has(s) && by(s)))] : [];
+    const kids = withFam
+      ? birthSortIds(model, [...new Set(p._children.filter(c => by(c) && !nextTrail.has(c)))])
+      : [];
     if (!spouses.length && !kids.length) return cardBlock(pid);
     const kidB = kids.map(k => descNode(k, depth + 1, nextTrail));
     const cont = new Map();
@@ -113,18 +128,30 @@ export function layout(model, focusId, mode) {
       place(x, gen) {
         addCard(pid, x + coupleX, gen);
         const pc = x + coupleX + CARD_W / 2;
-        let prev = pc, sx = x + coupleX + CARD_W + GAP;
-        const drops = [];
+        let sx = x + coupleX + CARD_W + GAP;
+        const drops = new Map();
         for (const s of spouses) {
           addCard(s, sx, gen);
           const sc = sx + CARD_W / 2;
-          drops.push(marriage(prev, sc, gen));
-          prev = sc; sx += CARD_W + GAP;
+          drops.set(s, marriage(pc, sc, gen));
+          sx += CARD_W + GAP;
         }
         if (kidB.length) {
-          const d = drops.length ? drops[0] : { x: pc, y: -gen * PITCH + CARD_H };
           const cc = kidB.map((b, i) => b.place(x + kidDx[i], gen - 1));
-          dropToChildren(d, cc, gen - 1);
+          const groups = new Map();
+          kids.forEach((kidId, index) => {
+            const child = by(kidId);
+            let partner = null;
+            if (child?._father === pid) partner = child._mother;
+            else if (child?._mother === pid) partner = child._father;
+            if (!drops.has(partner)) partner = null;
+            if (!groups.has(partner)) groups.set(partner, []);
+            groups.get(partner).push(cc[index]);
+          });
+          const ownDrop = { x: pc, y: -gen * PITCH + CARD_H };
+          for (const [partner, centers] of groups) {
+            dropToChildren((partner && drops.get(partner)) || ownDrop, centers, gen - 1);
+          }
         }
         return pc;
       }
@@ -132,12 +159,19 @@ export function layout(model, focusId, mode) {
   }
 
   // ancestor block for a person on the direct line
-  function ancNode(pid, depth) {
+  function ancNode(pid, depth, trail = new Set()) {
+    if (!pid || depth > MAXDEPTH || trail.has(pid)) return null;
+    spend();
     const p = by(pid);
+    if (!p) return null;
+    const nextTrail = new Set(trail);
+    nextTrail.add(pid);
     const faId = (p && p._father && by(p._father)) ? p._father : null;
     const moId = (p && p._mother && by(p._mother)) ? p._mother : null;
-    const faB = (faId && depth < MAXDEPTH) ? ancNode(faId, depth + 1) : null;
-    const moB = (moId && depth < MAXDEPTH) ? ancNode(moId, depth + 1) : null;
+    const faB = (faId && depth < MAXDEPTH) ? ancNode(faId, depth + 1, nextTrail) : null;
+    const moB = (moId && moId !== faId && depth < MAXDEPTH)
+      ? ancNode(moId, depth + 1, nextTrail)
+      : null;
 
     let rowIds = [pid];
     if (!ancOnly && (faId || moId)) {
@@ -229,7 +263,7 @@ export function layout(model, focusId, mode) {
 
   if (focusId && by(focusId)) {
     const root = ancNode(focusId, 0);
-    root.place(0, 0);
+    if (root) root.place(0, 0);
   }
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

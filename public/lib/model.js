@@ -309,23 +309,36 @@ export function buildModel(raw) {
     }
     splitPlaceCountry(p, 'birth_place');
     splitPlaceCountry(p, 'death_place');
-    p._unres = { father: null, mother: null, spouses: [], children: [] };
+    p._unres = {
+      father: null, mother: null, spouses: [], children: [],
+      fatherId: null, motherId: null, spouseIds: [], childIds: []
+    };
 
     // father / mother
     if (p.father_id && byId.has(p.father_id)) p._father = p.father_id;
-    else {
+    else if (p.father_id) {
+      p._father = null;
+      p._unres.fatherId = p.father_id;
+      if (p.father) p._unres.father = p.father;
+    } else {
       p._father = resolve(p.father, c => (asArr(c.children).includes(p.name) ? 2 : 0) + (c.sex === 'M' ? 1 : 0));
       if (p.father && !p._father) p._unres.father = p.father;
     }
     if (p.mother_id && byId.has(p.mother_id)) p._mother = p.mother_id;
-    else {
+    else if (p.mother_id) {
+      p._mother = null;
+      p._unres.motherId = p.mother_id;
+      if (p.mother) p._unres.mother = p.mother;
+    } else {
       p._mother = resolve(p.mother, c => (asArr(c.children).includes(p.name) ? 2 : 0) + (c.sex === 'F' ? 1 : 0));
       if (p.mother && !p._mother) p._unres.mother = p.mother;
     }
 
     // spouses
-    if (Array.isArray(p.spouse_ids) && p.spouse_ids.every(id => byId.has(id))) p._spouses = [...p.spouse_ids];
-    else {
+    if (Array.isArray(p.spouse_ids)) {
+      p._spouses = [...new Set(p.spouse_ids.filter(id => id !== p.id && byId.has(id)))];
+      p._unres.spouseIds = [...new Set(p.spouse_ids.filter(id => id !== p.id && !byId.has(id)))];
+    } else {
       p._spouses = [];
       for (const sn of asArr(p.spouse)) {
         const id = resolve(sn, c =>
@@ -337,8 +350,10 @@ export function buildModel(raw) {
     }
 
     // children
-    if (Array.isArray(p.children_ids) && p.children_ids.every(id => byId.has(id))) p._children = [...p.children_ids];
-    else {
+    if (Array.isArray(p.children_ids)) {
+      p._children = [...new Set(p.children_ids.filter(id => id !== p.id && byId.has(id)))];
+      p._unres.childIds = [...new Set(p.children_ids.filter(id => id !== p.id && !byId.has(id)))];
+    } else {
       p._children = [];
       for (const cn of asArr(p.children)) {
         const id = resolve(cn, c => ((c.father === p.name || c.mother === p.name) ? 2 : 0));
@@ -411,19 +426,27 @@ export function serialize(model) {
       o[k] = v;
     }
     if (p._father) { o.father = nameOf(p._father); o.father_id = p._father; }
-    else if (p._unres.father) o.father = p._unres.father;
+    else {
+      if (p._unres.father) o.father = p._unres.father;
+      if (p._unres.fatherId) o.father_id = p._unres.fatherId;
+    }
     if (p._mother) { o.mother = nameOf(p._mother); o.mother_id = p._mother; }
-    else if (p._unres.mother) o.mother = p._unres.mother;
+    else {
+      if (p._unres.mother) o.mother = p._unres.mother;
+      if (p._unres.motherId) o.mother_id = p._unres.motherId;
+    }
     const spNames = [...p._spouses.map(nameOf), ...p._unres.spouses].filter(Boolean);
     if (spNames.length) {
       o.spouse = spNames.length === 1 ? spNames[0] : spNames;
-      if (p._spouses.length) o.spouse_ids = [...p._spouses];
     }
+    const spouseIds = [...p._spouses, ...p._unres.spouseIds];
+    if (spouseIds.length) o.spouse_ids = spouseIds;
     const chNames = [...p._children.map(nameOf), ...p._unres.children].filter(Boolean);
     if (chNames.length) {
       o.children = chNames;
-      if (p._children.length) o.children_ids = [...p._children];
     }
+    const childIds = [...p._children, ...p._unres.childIds];
+    if (childIds.length) o.children_ids = childIds;
     return o;
   });
   const raw = model.raw;
