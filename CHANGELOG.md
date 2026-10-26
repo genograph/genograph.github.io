@@ -6,6 +6,26 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Place each direct-line parent at the inner edge of their sibling row (fathers
+  at the right end, mothers at the left) so couples stay side by side and their
+  child sits under them, instead of a marriage line spanning a whole row of
+  birth-ordered siblings.
+- Draw each person once even when they are reachable twice, such as a spouse
+  who is also a sibling or a cousin, instead of duplicating their card.
+- Keep the line from the parents straight down to the focus person when cousins
+  fill the row on their spouse's side: the spouse moves to the other side
+  instead of the line stepping sideways to reach the person.
+- Run the lines joining couples who are not side by side under the tallest card
+  of their row, all at the same depth. Cards grow when a name or place wraps,
+  and the line used to sit at a fixed depth that a taller card could reach and
+  hide.
+- Drop the line to a couple's children from the part of their joining line
+  above those children. Its midpoint could land over cousins drawn between the
+  couple, so both families' children looked like one set of siblings.
+- Break a line around the point where it crosses another line without joining
+  it, so a crossing no longer reads as a connection.
+
 ## [1.2.3] - 2026-08-23
 
 ### Added
