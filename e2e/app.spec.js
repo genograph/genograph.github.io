@@ -68,6 +68,30 @@ test('hosted IndexedDB mode persists edits across reloads', async ({ page }) => 
   await expect(page.locator('#tmStorePath')).toContainText('Stored in this browser');
 });
 
+test('cards show the current age of the living and the age at death', async ({ page }) => {
+  await openApp(page, HOSTED);
+  await createTreeWithPerson(page, `E2E ages ${Date.now()}`, 'Age Parent');
+  await page.locator('.card', { hasText: 'Age Parent' }).click();
+  await page.locator('#panel [data-add="child"]').click();
+  await page.locator('#apName').fill('Age Child');
+  await page.locator('#apBd').fill('1990.01.01');
+  await page.locator('#apOk').click();
+  const now = new Date();
+  const [years, months] = [now.getFullYear() - 1990, now.getMonth()];
+  const child = page.locator('.card', { hasText: 'Age Child' });
+  await expect(child.locator('.cdates')).toHaveText('b. 1990');
+  await expect(child.locator('.cage')).toHaveText(`${years}y`);
+  await expect(child.locator('.cage')).toHaveAttribute('title', months ? `${years}y ${months}m` : `${years}y`);
+
+  await page.locator('#panel [data-add="child"]').click();
+  await page.locator('#apName').fill('Age Grandchild');
+  await page.locator('#apBd').fill('1920.06.15');
+  await page.locator('#apDd').fill('2001.06.14');
+  await page.locator('#apOk').click();
+  await expect(page.locator('.card', { hasText: 'Age Grandchild' }).locator('.cage')).toHaveText('80y');
+  await expect(page.locator('#pAge')).toHaveText('Age at death: 80y 11m');
+});
+
 test('an edit made during an in-flight save is persisted by a later generation', async ({ page }) => {
   let writes = 0;
   let releaseFirst;
@@ -122,4 +146,54 @@ test('core tree controls expose keyboard and state semantics', async ({ page }) 
   await expect(page.locator('#segFull')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#saveStatus')).toHaveAttribute('aria-live', 'polite');
   await expect(page.locator('#searchInput')).toHaveAttribute('role', 'combobox');
+});
+
+test('printing follows the selected view and focus person', async ({ page }) => {
+  await openApp(page, HOSTED);
+  // capture the report instead of opening the browser's print dialog
+  await page.evaluate(() => {
+    window.print = () => { window.__printed = document.getElementById('printView').innerHTML; };
+  });
+  await page.locator('#segAnc').click();
+  await page.locator('#printBtn').click();
+  await expect(page.locator('#printDialog')).toBeVisible();
+  await expect(page.locator('#prViewHint')).toContainText('Ancestors of Guy de Lusignan');
+  await page.locator('#prOk').click();
+  await expect(page.locator('#printDialog')).toBeHidden();
+  const ancestors = await page.evaluate(() => window.__printed);
+  expect(ancestors).toContain('Ancestors: Guy de Lusignan');
+  expect(ancestors).toContain('Parents\' generation');
+  expect(ancestors).toContain('Hugh VIII de Lusignan');
+  expect(ancestors).not.toContain('</span> Sibylla of Jerusalem');
+  expect(ancestors).toContain('Ahnentafel numbers');
+  expect(ancestors).toContain('<span class="rp-num">2.</span> Hugh VIII de Lusignan');
+
+  await page.locator('#segFull').click();
+  await page.keyboard.press('ControlOrMeta+p');
+  await expect(page.locator('#printDialog')).toBeVisible();
+  await expect(page.locator('#prDetailed')).toBeChecked();
+  await page.locator('#prNotes').uncheck();
+  await page.locator('#prOk').click();
+  const whole = await page.evaluate(() => window.__printed);
+  expect(whole).toContain('Whole Family: Guy de Lusignan');
+  expect(whole).toContain('</span> Sibylla of Jerusalem');
+  expect(whole).toContain('Children\'s generation');
+  expect(whole).not.toContain('rp-notes');
+
+  await page.locator('#printBtn').click();
+  await page.locator('#prCompact').check();
+  await expect(page.locator('#prNotes')).toBeDisabled();
+  await page.locator('#prOk').click();
+  const compact = await page.evaluate(() => window.__printed);
+  expect(compact).toContain('<table class="rp-table">');
+  expect(compact).not.toContain('rp-entry');
+
+  // notes belong to the detailed layout: disabled while compact is remembered, enabled with detailed
+  await page.locator('#printBtn').click();
+  await expect(page.locator('#prCompact')).toBeChecked();
+  await expect(page.locator('#prNotes')).toBeDisabled();
+  await page.locator('#prDetailed').check();
+  await expect(page.locator('#prNotes')).toBeEnabled();
+  await page.locator('#prCancel').click();
+  await expect(page.locator('#printView')).toBeHidden();
 });

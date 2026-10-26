@@ -8,12 +8,13 @@
 
 import {
   buildModel, serialize, rootIdOf, setRootId, validateTree, TREE_LIMITS,
-  birthSortIds, siblingIds, norm, searchText, yearOf, CAUSES, DATE_RE
+  birthSortIds, siblingIds, norm, searchText, yearOf, ageOf, CAUSES, DATE_RE
 } from './lib/model.js';
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 import { initialLanguage } from './lib/i18n.js';
 import { SaveCoordinator } from './lib/autosave.js';
+import { viewReport } from './lib/report.js';
 import { assertCanSetParent, linkSpouses, setParent } from './lib/relationships.js';
 
 /* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
@@ -65,6 +66,7 @@ const I18N = {
     addedSnack: 'Eklendi: {n}', linkedSnack: 'Bağlandı: {n}', deletedSnack: 'Silindi: {n}',
     fabTitle: 'Yeni kişi ekle', dblFocus: 'Çift tıkla: bu kişiye odaklan', closePanel: 'Kapat',
     noResults: 'Sonuç yok', offTree: 'ağaç dışı', born: 'd.', died: 'ö.',
+    ageY: '{y}y', ageM: '{m}a', ageYM: '{y}y {m}a', age: 'Yaş', ageAtDeath: 'Ölüm yaşı',
     // tree library
     newTree: 'Yeni ağaç', importTreeBtn: 'JSON içe aktar…', renameTree: 'Yeniden adlandır',
     duplicateTree: 'Çoğalt', exportTree: 'JSON dışa aktar', deleteTreeBtn: 'Ağacı sil',
@@ -106,7 +108,23 @@ const I18N = {
     welcomeLocalTitle: 'Gerçek dosyalar ve otomatik yedekler mi istiyorsunuz?',
     welcomeLocal: 'Ücretsiz yerel sürümü çalıştırın: ağaçlarınızı doğrudan bilgisayarınızdaki .json dosyalarına yazar ve otomatik yedek tutar. Tamamen çevrimdışı çalışır.',
     welcomeCopy: 'Kopyala', welcomeCopied: 'Kopyalandı ✓',
-    welcomeStart: 'Keşfetmeye başla'
+    welcomeStart: 'Keşfetmeye başla',
+    // print
+    printView: 'Bu görünümü yazdır / PDF olarak kaydet', printTitle: 'Bu görünümü yazdır',
+    printViewHint: '{n} için {v} görünümü: {c} kişi, kuşak kuşak, ekranda çizildikleri sırayla.',
+    printNotes: 'Notları dahil et', printHideLiving: 'Yaşayan kişilerin ayrıntılarını gizle',
+    printPdfHint: 'PDF dosyası için yazdırma penceresinde "PDF olarak kaydet"i seçin.', printBtn: 'Yazdır',
+    reportPeople: '{n} kişi', reportPrinted: 'Yazdırılma: {d}',
+    reportAbout: 'yakl.', reportBorn: 'Doğum', reportDied: 'Ölüm', reportBuried: 'Defin',
+    reportStatus: 'Durum', reportLiving: 'Yaşıyor; ayrıntılar gizlendi',
+    reportGen0: '{n} kuşağı', reportGenUp1: 'Anne-baba kuşağı', reportGenUp2: 'Büyükanne-büyükbaba kuşağı',
+    reportGenUp3: 'Büyük büyükanne-büyükbaba kuşağı', reportGenUpN: '{d} kuşak yukarı',
+    reportGenDown1: 'Çocuklar kuşağı', reportGenDown2: 'Torunlar kuşağı', reportGenDown3: 'Torun çocukları kuşağı',
+    reportGenDownN: '{d} kuşak aşağı',
+    printLayout: 'Düzen', printDetailed: 'Ayrıntılı', printDetailedHint: 'Kişi başına tam kayıt: bilgiler, akrabalar ve notlar',
+    printCompact: 'Kompakt', printCompactHint: 'Kişi başına bir tablo satırı; bir görünüm bir iki sayfaya sığar',
+    reportParents: 'Anne-baba', reportLivingShort: 'Yaşıyor', reportMonths: '{m} ay',
+    reportAhnentafel: 'Ahnentafel numaraları: bir kişinin babası numarasının iki katı, annesi iki katının bir fazlasıdır.'
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
@@ -147,6 +165,7 @@ const I18N = {
     addedSnack: 'Added: {n}', linkedSnack: 'Linked: {n}', deletedSnack: 'Deleted: {n}',
     fabTitle: 'Add person', dblFocus: 'Double-click to focus on this person', closePanel: 'Close',
     noResults: 'No results', offTree: 'off-tree', born: 'b.', died: 'd.',
+    ageY: '{y}y', ageM: '{m}m', ageYM: '{y}y {m}m', age: 'Age', ageAtDeath: 'Age at death',
     // tree library
     newTree: 'New tree', importTreeBtn: 'Import JSON…', renameTree: 'Rename',
     duplicateTree: 'Duplicate', exportTree: 'Export JSON', deleteTreeBtn: 'Delete tree',
@@ -188,7 +207,23 @@ const I18N = {
     welcomeLocalTitle: 'Want real files & automatic backups?',
     welcomeLocal: 'Run the free local version: it reads and writes your trees as .json files directly on your computer and keeps automatic backups. Works completely offline.',
     welcomeCopy: 'Copy', welcomeCopied: 'Copied ✓',
-    welcomeStart: 'Start exploring'
+    welcomeStart: 'Start exploring',
+    // print
+    printView: 'Print this view / save as PDF', printTitle: 'Print this view',
+    printViewHint: '{v} of {n}: {c} people, by generation, in the order they are drawn.',
+    printNotes: 'Include notes', printHideLiving: 'Hide details of living people',
+    printPdfHint: 'For a PDF file, choose "Save as PDF" in the print dialog.', printBtn: 'Print',
+    reportPeople: '{n} people', reportPrinted: 'Printed {d}',
+    reportAbout: 'abt.', reportBorn: 'Born', reportDied: 'Died', reportBuried: 'Buried',
+    reportStatus: 'Status', reportLiving: 'Living; details withheld',
+    reportGen0: 'Generation of {n}', reportGenUp1: 'Parents\' generation', reportGenUp2: 'Grandparents\' generation',
+    reportGenUp3: 'Great-grandparents\' generation', reportGenUpN: '{k}× great-grandparents\' generation',
+    reportGenDown1: 'Children\'s generation', reportGenDown2: 'Grandchildren\'s generation', reportGenDown3: 'Great-grandchildren\'s generation',
+    reportGenDownN: '{k}× great-grandchildren\'s generation',
+    printLayout: 'Layout', printDetailed: 'Detailed', printDetailedHint: 'A full entry per person: details, relatives and notes',
+    printCompact: 'Compact', printCompactHint: 'One table line per person, so a view fits on a page or two',
+    reportParents: 'Parents', reportLivingShort: 'Living', reportMonths: '{m} months',
+    reportAhnentafel: 'Ahnentafel numbers: anyone\'s father is twice their number, their mother twice plus one.'
   }
 };
 const storedLang = localStorage.getItem('ft_lang');
@@ -249,6 +284,16 @@ function lifeSpan(p) {
   if (b) return (p.deceased && !d) ? `${bu}${b} – †` : `${t('born')} ${bu}${b}`;
   if (d) return `${t('died')} ${du}${d}`;
   return p.deceased ? '†' : '';
+}
+/**
+ * Compact age such as "82y 2m", "~82y" or "5m" (approximate ages are marked with ~);
+ * `short` drops the months once the person is a year old.
+ */
+function ageLabel(age, short = false) {
+  const label = age.months == null || (age.years && (short || age.months === 0)) ? t('ageY', { y: age.years })
+    : age.years ? t('ageYM', { y: age.years, m: age.months })
+    : t('ageM', { m: age.months });
+  return (age.approx ? '~' : '') + label;
 }
 function snack(msg) {
   const sb = $('snackbar');
@@ -348,6 +393,7 @@ function renderTree() {
     $('canvasError').classList.add('hidden');
     svg.innerHTML = ''; cardsEl.replaceChildren();
     placedIds = new Set();
+    $('printBtn').disabled = true;
     lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
     $('stats').textContent = '';
     $('focusChip').classList.add('hidden');
@@ -362,6 +408,7 @@ function renderTree() {
   } catch (error) {
     svg.innerHTML = ''; cardsEl.replaceChildren();
     placedIds = new Set();
+    $('printBtn').disabled = true;
     lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
     $('stats').textContent = '';
     $('canvasError').textContent = t('layoutTooComplex');
@@ -370,6 +417,7 @@ function renderTree() {
   }
   const { cards, segs, bbox } = output;
   placedIds = new Set(cards.map(c => c.id));
+  $('printBtn').disabled = !placedIds.size;
   lastLayout = { cards, segs, bbox };
 
   const PAD = 60;
@@ -399,11 +447,13 @@ function renderTree() {
     div.setAttribute('aria-selected', c.id === selectedId ? 'true' : 'false');
     div.setAttribute('aria-label', t('cardHelp', { n: p.name }));
     const span = lifeSpan(p);
+    const age = ageOf(p);
     const placeSrc = p.birth_place || p.birth_country || '';
     const place = ((p.birth_place_uncertain ? '~' : '') + placeSrc.split(',')[0].trim()).replace(/^~$/, '');
     const nick = (p.aliases || '').split(',')[0].trim();
     div.innerHTML =
-      `<div class="avatar">${esc((p.name || '?').trim().charAt(0).toLocaleUpperCase('tr'))}</div>` +
+      `<div class="cside"><div class="avatar">${esc((p.name || '?').trim().charAt(0).toLocaleUpperCase('tr'))}</div>` +
+      (age ? `<div class="cage" title="${esc(ageLabel(age))}">${esc(ageLabel(age, true))}</div>` : '') + '</div>' +
       `<div class="cinfo"><div class="cname">${esc(p.name)}${p.deceased && !span.includes('†') && !yearOf(p.death_date) ? ' †' : ''}` +
       (nick ? ` <span class="cnick">“${esc(nick)}”</span>` : '') + '</div>' +
       (span ? `<div class="cdates">${esc(span)}</div>` : '') +
@@ -699,6 +749,7 @@ function renderPanel() {
       ${placeRow('death_place', t('deathPlace'), p)}
       ${fieldRow('death_country', t('deathCountry'), p)}
     </div>
+    <div class="agerow" id="pAge"></div>
     <label class="checkrow"><input type="checkbox" id="pDeceased" ${p.deceased ? 'checked' : ''}> ${t('deceased')}</label>
     ${p.deceased ? `<div class="row2">
       <div class="field"><label for="pf-death_cause">${t('deathCause')}</label>
@@ -734,6 +785,12 @@ function renderPanel() {
   $('pFocus').onclick = () => setFocus(p.id);
   if ($('pMakeDefault')) $('pMakeDefault').onclick = () => setDefaultPerson(p.id);
   $('pDelete').onclick = () => confirmDelete(p.id);
+  const showAge = () => {
+    const age = ageOf(p);
+    $('pAge').textContent = age ? `${t(p.death_date ? 'ageAtDeath' : 'age')}: ${ageLabel(age)}` : '';
+    $('pAge').classList.toggle('hidden', !age);
+  };
+  showAge();
   $('pDeceased').onchange = e => { p.deceased = e.target.checked; touch(p); markDirty(); renderPanel(); renderTree(); };
   $('pIlleg').onchange = e => {
     if (e.target.checked) p.had_illegitimate_children = true; else delete p.had_illegitimate_children;
@@ -754,14 +811,14 @@ function renderPanel() {
     inp.addEventListener('change', () => {
       const v = inp.value.trim().replace(/[-/\s]+/g, '.');
       inp.value = v; p[inp.dataset.f] = v;
-      validate(); touch(p); markDirty(); renderTree();
+      validate(); touch(p); markDirty(); renderTree(); showAge();
       if (inp.dataset.f === 'death_date' && v && !p.deceased) { p.deceased = true; renderPanel(); }
     });
   });
   panel.querySelectorAll('[data-unc]').forEach(cb => {
     cb.onchange = () => {
       if (cb.checked) p[cb.dataset.unc] = true; else delete p[cb.dataset.unc];
-      touch(p); markDirty(); renderTree();
+      touch(p); markDirty(); renderTree(); showAge();
     };
   });
   panel.querySelectorAll('[data-sexval]').forEach(btn => {
@@ -1257,6 +1314,76 @@ function setupTreeLibrary() {
   document.addEventListener('click', e => { if (!e.target.closest('.treewrap')) closeTreeMenu(); });
 }
 
+/* ---------------- print ----------------
+ * The current view is rendered into #printView, which only print media shows,
+ * and the browser's own print dialog handles paper and "Save as PDF". */
+const printOpts = { notes: true, hideLiving: false, compact: false };
+const MODE_LABEL = { full: 'modeFull', close: 'modeClose', ancestors: 'modeAnc' };
+
+const canPrint = () => !!(model && lastLayout?.cards.length);
+function renderPrintView() {
+  $('printView').innerHTML = viewReport(model, lastLayout.cards, focusId, {
+    t, lang, title: currentTreeName(), note: model.raw.summary?.note, view: t(MODE_LABEL[mode]),
+    notes: printOpts.notes, hideLiving: printOpts.hideLiving, compact: printOpts.compact,
+    ahnentafel: mode === 'ancestors'
+  });
+}
+// notes belong to the detailed layout, so they can only be chosen with it
+function syncNotes() {
+  $('prNotes').disabled = !$('prDetailed').checked;
+}
+function openPrintDialog() {
+  const dlg = $('printDialog');
+  if (!canPrint() || dlg.open) return;
+  $('prTitle').textContent = t('printTitle');
+  $('prViewHint').textContent = t('printViewHint', {
+    v: t(MODE_LABEL[mode]), n: model.byId.get(focusId)?.name || '?', c: placedIds.size
+  });
+  $('lbPrLayout').textContent = t('printLayout');
+  $('lbPrDetailed').textContent = t('printDetailed');
+  $('prDetailedHint').textContent = t('printDetailedHint');
+  $('lbPrCompact').textContent = t('printCompact');
+  $('prCompactHint').textContent = t('printCompactHint');
+  $('lbPrNotes').textContent = t('printNotes');
+  $('lbPrLiving').textContent = t('printHideLiving');
+  $('prPdfHint').textContent = t('printPdfHint');
+  $('prCancel').textContent = t('cancel');
+  $('prOk').textContent = t('printBtn');
+  $(printOpts.compact ? 'prCompact' : 'prDetailed').checked = true;
+  $('prNotes').checked = printOpts.notes;
+  syncNotes();
+  $('prLiving').checked = printOpts.hideLiving;
+  dlg.showModal();
+  $('prOk').focus();
+}
+function printNow() {
+  printOpts.compact = $('prCompact').checked;
+  printOpts.notes = $('prNotes').checked;
+  printOpts.hideLiving = $('prLiving').checked;
+  $('printDialog').close();
+  renderPrintView();
+  window.print();
+}
+function setupPrint() {
+  $('printBtn').onclick = openPrintDialog;
+  $('prCancel').onclick = () => $('printDialog').close();
+  $('prOk').onclick = printNow;
+  // the compact table has no room for notes
+  $('prDetailed').onchange = $('prCompact').onchange = syncNotes;
+  // Ctrl/Cmd+P opens the print options instead of printing the canvas
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p' && canPrint()) {
+      e.preventDefault();
+      openPrintDialog();
+    }
+  });
+  // printing from the browser menu prints the current view with the last options
+  window.addEventListener('beforeprint', () => {
+    if (canPrint() && !$('printView').childElementCount) renderPrintView();
+  });
+  window.addEventListener('afterprint', () => $('printView').replaceChildren());
+}
+
 /* ---------------- data folder ---------------- */
 function updateDataRow() {
   const dir = settings && settings.dataDir;
@@ -1430,6 +1557,8 @@ function applyLabels() {
   $('tmRename').title = t('renameTree');
   $('tmDuplicate').title = t('duplicateTree');
   $('tmExport').title = t('exportTree');
+  $('printBtn').title = t('printView');
+  $('printBtn').setAttribute('aria-label', t('printView'));
   $('tmDelete').title = t('deleteTreeBtn');
   $('tmDataLabel').textContent = t('dataFolder');
   updateStoreRow();
@@ -1481,6 +1610,7 @@ function setupAppbar() {
   setupDataDialog();
   setupStoreRow();
   setupWelcome();
+  setupPrint();
   try {
     const picked = await pickStore();
     store = picked.store; storeMode = picked.mode; savedHandle = picked.savedHandle;

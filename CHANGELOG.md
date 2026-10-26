@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Show each person's age on their card: current age for the living, age at
+  death for the deceased, in years and months (for example `82y 2m`). Ages from
+  uncertain or partial dates are marked `~`; no age is shown when it cannot be
+  worked out.
+- Print the current view, or save it as a PDF, with the printer button in the
+  header (or `Ctrl`/`Cmd`+`P`). The printout follows the selected view (*Whole
+  Family*, *Close Family* or *Ancestors*) and focus person, one section per
+  generation in the order the cards are drawn, with each person's facts and age,
+  relatives cross-referenced by number, and notes. A *compact* option prints one
+  table line per person instead, and the Ancestors view uses Ahnentafel numbers
+  (father 2n, mother 2n+1). Notes can be left out and the details of living
+  people withheld.
+
 ## [1.2.3] - 2026-08-23
 
 ### Added
